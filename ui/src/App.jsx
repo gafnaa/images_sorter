@@ -151,6 +151,44 @@ const DestinationCard = ({ path, index, onClick, onRemove }) => {
   );
 };
 
+// --- THUMBNAIL COMPONENT ---
+
+const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
+  const [src, setSrc] = useState(null);
+  
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      // Simple path join
+      const sep = sourcePath.includes('\\') ? '\\' : '/';
+      const fullPath = `${sourcePath}${sep}${filename}`;
+      const b64 = await callApi('load_image', fullPath);
+      if (mounted && b64) setSrc(b64);
+    };
+    load();
+    return () => { mounted = false; };
+  }, [filename, sourcePath]);
+
+  return (
+    <div 
+      onClick={onClick}
+      className={clsx(
+        "flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 cursor-pointer transition-all relative group",
+        isActive ? "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] scale-105 z-10" : "border-white/10 hover:border-white/30 opacity-60 hover:opacity-100"
+      )}
+    >
+      {src ? (
+        <img src={src} className="w-full h-full object-cover" alt={filename} />
+      ) : (
+        <div className="w-full h-full bg-white/5 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white/80 rounded-full animate-spin"/>
+        </div>
+      )}
+      {isActive && <div className="absolute inset-0 ring-2 ring-blue-500 rounded-lg" />}
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 
 function App() {
@@ -168,6 +206,12 @@ function App() {
 
   // --- Logic ---
   
+  // Carousel window logic
+  // Show 3 previous and up to 12 next images
+  const carouselStartIndex = Math.max(0, currentIndex - 3);
+  const carouselEndIndex = Math.min(images.length, currentIndex + 12);
+  const carouselImages = images.slice(carouselStartIndex, carouselEndIndex);
+
   const loadRef = useRef(currentIndex);
 
   const scan = async () => {
@@ -199,10 +243,12 @@ function App() {
     const load = async () => {
       setLoadingImage(true);
       const filename = images[currentIndex];
+      // Handling path separators somewhat naively but functional for Windows
       const sep = sourcePath.includes('\\') ? '\\' : '/';
       const fullPath = `${sourcePath}${sep}${filename}`;
       
       const b64 = await callApi('load_image', fullPath);
+      // Prevent race condition if index changed fast
       if (currentIndex === loadRef.current) { 
         setCurrentImageSrc(b64);
         setLoadingImage(false);
@@ -384,104 +430,135 @@ function App() {
       </header>
 
       {/* Main Workspace */}
-      <main className="flex-1 flex overflow-hidden relative z-10">
+      <main className="flex-1 flex overflow-hidden relative z-10 flex-col">
         
-        {/* Left Nav */}
-        <div className="w-20 hidden md:flex items-center justify-center">
-           <IconButton 
-              icon={ArrowLeft} 
-              onClick={handlePrev} 
-              disabled={currentIndex === 0 || isDone} 
-              className="!w-12 !h-12 !rounded-full !bg-white/5 hover:!bg-white/10 !border-none" 
-              size={24}
-           />
-        </div>
+        <div className="flex-1 flex w-full relative">
+            {/* Left Nav */}
+            <div className="w-20 hidden md:flex items-center justify-center">
+            <IconButton 
+                icon={ArrowLeft} 
+                onClick={handlePrev} 
+                disabled={currentIndex === 0 || isDone} 
+                className="!w-12 !h-12 !rounded-full !bg-white/5 hover:!bg-white/10 !border-none" 
+                size={24}
+            />
+            </div>
 
-        {/* Center Canvas */}
-        <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0">
-            <div className="relative w-full h-full max-w-5xl max-h-full flex flex-col">
-                
-                {/* Image Container */}
-                <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#111] border border-white/5 shadow-2xl flex items-center justify-center group">
-                    <AnimatePresence mode="wait">
-                        {isDone ? (
-                            <motion.div 
-                                initial={{ opacity: 0, scale: 0.9 }} 
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="text-center"
-                            >
-                                <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
-                                    <CheckCircle size={48} className="text-emerald-500" />
+            {/* Center Canvas */}
+            <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0">
+                <div className="relative w-full h-full max-w-5xl max-h-full flex flex-col">
+                    
+                    {/* Image Container */}
+                    <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#111] border border-white/5 shadow-2xl flex items-center justify-center group">
+                        <AnimatePresence mode="wait">
+                            {isDone ? (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9 }} 
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="text-center"
+                                >
+                                    <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+                                        <CheckCircle size={48} className="text-emerald-500" />
+                                    </div>
+                                    <h2 className="text-3xl font-bold mb-2">All Caught Up!</h2>
+                                    <p className="text-gray-400 mb-8">This folder is empty.</p>
+                                    <Button onClick={handleSelectSource} variant="secondary">
+                                        <RefreshCw size={18} /> Select New Folder
+                                    </Button>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key={images[currentIndex]}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="absolute inset-0 flex items-center justify-center p-1"
+                                >
+                                    {loadingImage ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"/>
+                                            <span className="text-xs text-gray-500 uppercase tracking-widest">Loading</span>
+                                        </div>
+                                    ) : currentImageSrc ? (
+                                        <>
+                                            {/* Blurred Background for Fill */}
+                                            <div 
+                                                className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
+                                                style={{ backgroundImage: `url(${currentImageSrc})` }}
+                                            />
+                                            <img 
+                                                src={currentImageSrc} 
+                                                className="relative max-w-full max-h-full object-contain rounded-xl shadow-lg z-10 transition-transform duration-500" 
+                                                alt=""
+                                            />
+                                        </>
+                                    ) : (
+                                        <div className="text-gray-600 flex flex-col items-center">
+                                            <ImageIcon size={48} className="mb-2 opacity-20"/>
+                                            <p>No Preview Available</p>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Image Info Overlay */}
+                        {!isDone && (
+                            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
+                                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
+                                    {images[currentIndex]}
                                 </div>
-                                <h2 className="text-3xl font-bold mb-2">All Caught Up!</h2>
-                                <p className="text-gray-400 mb-8">This folder is empty.</p>
-                                <Button onClick={handleSelectSource} variant="secondary">
-                                    <RefreshCw size={18} /> Select New Folder
-                                </Button>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key={images[currentIndex]}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="absolute inset-0 flex items-center justify-center p-1"
-                            >
-                                {loadingImage ? (
-                                    <div className="flex flex-col items-center gap-4">
-                                        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"/>
-                                        <span className="text-xs text-gray-500 uppercase tracking-widest">Loading</span>
-                                    </div>
-                                ) : currentImageSrc ? (
-                                    <>
-                                        {/* Blurred Background for Fill */}
-                                        <div 
-                                            className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
-                                            style={{ backgroundImage: `url(${currentImageSrc})` }}
-                                        />
-                                        <img 
-                                            src={currentImageSrc} 
-                                            className="relative max-w-full max-h-full object-contain rounded-xl shadow-lg z-10 transition-transform duration-500" 
-                                            alt=""
-                                        />
-                                    </>
-                                ) : (
-                                    <div className="text-gray-600 flex flex-col items-center">
-                                        <ImageIcon size={48} className="mb-2 opacity-20"/>
-                                        <p>No Preview Available</p>
-                                    </div>
-                                )}
-                            </motion.div>
+                                <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400">
+                                    {currentIndex + 1} / {images.length}
+                                </div>
+                            </div>
                         )}
-                    </AnimatePresence>
+                    </div>
 
-                    {/* Image Info Overlay */}
-                    {!isDone && (
-                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-                             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
-                                {images[currentIndex]}
-                             </div>
-                             <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400">
-                                {currentIndex + 1} / {images.length}
-                             </div>
-                        </div>
-                    )}
                 </div>
+            </div>
 
+            {/* Right Nav */}
+            <div className="w-20 hidden md:flex items-center justify-center">
+                <IconButton 
+                icon={ArrowRight} 
+                onClick={handleNext} 
+                disabled={currentIndex === images.length - 1 || isDone} 
+                className="!w-12 !h-12 !rounded-full !bg-white/5 hover:!bg-white/10 !border-none" 
+                size={24}
+            />
             </div>
         </div>
+        
+        {/* Thumbnail Carousel */}
+        {!isDone && (
+            <div className="h-28 w-full border-t border-white/5 bg-black/10 backdrop-blur-sm flex items-center justify-center relative">
+                 <div className="flex gap-2 p-4 overflow-hidden mask-linear-fade max-w-full">
+                    {/* Previous Indicator */}
+                    {carouselStartIndex > 0 && (
+                        <div className="w-8 flex items-center justify-center text-gray-600">...</div>
+                    )}
+                    
+                    {carouselImages.map((filename, idx) => {
+                        const actualIdx = carouselStartIndex + idx;
+                        return (
+                            <Thumbnail 
+                                key={filename}
+                                filename={filename}
+                                sourcePath={sourcePath}
+                                isActive={actualIdx === currentIndex}
+                                onClick={() => setCurrentIndex(actualIdx)}
+                            />
+                        )
+                    })}
+                     {carouselEndIndex < images.length && (
+                        <div className="w-8 flex items-center justify-center text-gray-600">...</div>
+                    )}
+                 </div>
+            </div>
+        )}
 
-        {/* Right Nav */}
-        <div className="w-20 hidden md:flex items-center justify-center">
-            <IconButton 
-              icon={ArrowRight} 
-              onClick={handleNext} 
-             disabled={currentIndex === images.length - 1 || isDone} 
-              className="!w-12 !h-12 !rounded-full !bg-white/5 hover:!bg-white/10 !border-none" 
-              size={24}
-           />
-        </div>
       </main>
 
       {/* Bottom Dock (Destinations) */}

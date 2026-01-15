@@ -37,16 +37,23 @@ class Api:
             print(f"API: Error opening dialog: {e}")
             return None
 
-    def scan_images(self, folder_path):
+    def scan_images(self, folder_path, allowed_extensions=None):
         """Return a list of image filenames in the folder."""
         if not folder_path or not os.path.exists(folder_path):
             return []
         
         images = []
-        valid_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+        # Default extensions if none provided
+        if not allowed_extensions:
+            valid_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+        else:
+            # Ensure extensions start with dot and are lowercase
+            valid_exts = {f".{ext.lower().lstrip('.')}" for ext in allowed_extensions}
+            
         try:
             for f in os.listdir(folder_path):
-                if f.lower().endswith(valid_exts):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in valid_exts:
                     images.append(f)
         except Exception as e:
             print(f"Error scanning folder: {e}")

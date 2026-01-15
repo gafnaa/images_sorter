@@ -12,7 +12,8 @@ import {
   Folder,
   Move,
   Settings,
-  X
+  X,
+  Filter
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -39,6 +40,45 @@ const callApi = async (method, ...args) => {
 };
 
 // --- COMPONENTS ---
+
+// ... (Button, IconButton, DestinationCard components remain unchanged) ...
+
+const FilterPopup = ({ filters, onToggle, onClose }) => {
+  const options = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="absolute top-16 right-6 w-48 bg-surface border border-white/10 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl"
+    >
+      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+        <span className="text-sm font-semibold">File Types</span>
+        <button onClick={onClose}><X size={14} className="text-gray-400 hover:text-white" /></button>
+      </div>
+      <div className="space-y-2">
+        {options.map(ext => (
+          <label key={ext} className="flex items-center gap-3 cursor-pointer group">
+            <div className={clsx(
+              "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+              filters.includes(ext) ? "bg-blue-500 border-blue-500" : "border-gray-500 group-hover:border-gray-400"
+            )}>
+              {filters.includes(ext) && <CheckCircle size={10} className="text-white" />}
+            </div>
+            <input 
+              type="checkbox" 
+              className="hidden" 
+              checked={filters.includes(ext)}
+              onChange={() => onToggle(ext)}
+            />
+            <span className="text-sm text-gray-300 group-hover:text-white uppercase">{ext}</span>
+          </label>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
 
 const Button = ({ children, onClick, variant = 'primary', className, disabled, ...props }) => {
   const base = "flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed";
@@ -121,11 +161,35 @@ function App() {
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(false);
+  
+  // Filter States
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState(['png', 'jpg', 'jpeg', 'gif', 'webp']);
 
   // --- Logic ---
   
   const loadRef = useRef(currentIndex);
 
+  const scan = async () => {
+      if (!sourcePath) return;
+      setLoading(true);
+      const imgs = await callApi('scan_images', sourcePath, filters);
+      setImages(imgs || []);
+      // Reset index if out of bounds or just 0
+      setCurrentIndex(0); 
+      setLoading(false);
+  };
+
+  // Rescan when filters change, but only if source is selected
+  useEffect(() => {
+    if (sourcePath) {
+        scan();
+    }
+  }, [filters, sourcePath]); // Re-run when source or filters change. 
+  // Wait, if sourcePath changes, this runs.
+  // Original handleSelectSource calls scan manually. 
+  // If we rely on useEffect, we can simplify handleSelectSource.
+  
   useEffect(() => {
     if (!images.length || currentIndex >= images.length) {
         setCurrentImageSrc(null);
@@ -135,12 +199,10 @@ function App() {
     const load = async () => {
       setLoadingImage(true);
       const filename = images[currentIndex];
-      // Handling path separators somewhat naively but functional for Windows
       const sep = sourcePath.includes('\\') ? '\\' : '/';
       const fullPath = `${sourcePath}${sep}${filename}`;
       
       const b64 = await callApi('load_image', fullPath);
-      // Prevent race condition if index changed fast
       if (currentIndex === loadRef.current) { 
         setCurrentImageSrc(b64);
         setLoadingImage(false);
@@ -156,12 +218,16 @@ function App() {
     const path = await callApi('select_folder');
     if (path) {
       setSourcePath(path);
-      setLoading(true);
-      const imgs = await callApi('scan_images', path);
-      setImages(imgs || []);
-      setCurrentIndex(0);
-      setLoading(false);
+      // The useEffect [filters, sourcePath] will trigger scan() automatically
     }
+  };
+
+  const handleToggleFilter = (ext) => {
+    setFilters(prev => 
+      prev.includes(ext) 
+        ? prev.filter(f => f !== ext) 
+        : [...prev, ext]
+    );
   };
 
   const handleAddDestination = async () => {
@@ -271,23 +337,48 @@ function App() {
       </div>
 
       {/* Top Bar */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-20">
+      <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-20 relative">
         <div className="flex items-center gap-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                 <FolderOpen size={16} className="text-white" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col mr-4">
                 <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Source</span>
                 <span className="text-sm font-semibold truncate max-w-[300px]" title={sourcePath}>
                     {sourcePath.split(/[/\\]/).pop()}
                 </span>
             </div>
+             <Button onClick={handleSelectSource} variant="ghost" className="!px-3 !py-1 text-xs gap-1 h-8">
+                <RefreshCw size={14} /> Change
+            </Button>
         </div>
         
         <div className="flex items-center gap-4">
              <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
                 <ImageIcon size={14} className="text-gray-400"/>
                 <span className="text-sm font-medium">{images.length} <span className="text-gray-500">pending</span></span>
+             </div>
+             
+             {/* Filter Button */}
+             <div className="relative">
+                <Button 
+                    onClick={() => setShowFilters(!showFilters)} 
+                    variant={showFilters ? 'primary' : 'secondary'}
+                    className="!px-3 !py-1 h-9 rounded-lg"
+                >
+                    <Filter size={16} />
+                    {filters.length !== 5 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-[#0a0a0a]"></span>}
+                </Button>
+                
+                <AnimatePresence>
+                    {showFilters && (
+                        <FilterPopup 
+                            filters={filters} 
+                            onToggle={handleToggleFilter} 
+                            onClose={() => setShowFilters(false)}
+                        />
+                    )}
+                </AnimatePresence>
              </div>
         </div>
       </header>

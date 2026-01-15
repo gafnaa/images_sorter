@@ -17,10 +17,10 @@ import {
 import clsx from 'clsx';
 
 // --- API HANDLING ---
-const isPyWebView = typeof window.pywebview !== 'undefined';
 
 const callApi = async (method, ...args) => {
-  if (isPyWebView) {
+  // Check dynamically because pywebview is injected asynchronously
+  if (window.pywebview) {
     try {
       return await window.pywebview.api[method](...args);
     } catch (error) {

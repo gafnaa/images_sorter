@@ -15,13 +15,27 @@ class Api:
 
     def select_folder(self):
         """Open a folder selection dialog and return the path."""
-        # result is a tuple/list of paths or None
-        if not self._window:
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        print("API: select_folder called (using Tkinter)")
+        try:
+            root = tk.Tk()
+            root.withdraw() # Hide the main window
+            root.attributes('-topmost', True) # Bring to front
+            
+            # This implementation is more robust on Windows than pywebview's native dialog
+            folder_path = filedialog.askdirectory()
+            
+            root.destroy()
+            
+            print(f"API: Selected path: {folder_path}")
+            if folder_path:
+                return folder_path.replace('/', '\\') # Normalize for Windows visual consistency
             return None
-        result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
-        if result and len(result) > 0:
-            return result[0]
-        return None
+        except Exception as e:
+            print(f"API: Error opening dialog: {e}")
+            return None
 
     def scan_images(self, folder_path):
         """Return a list of image filenames in the folder."""

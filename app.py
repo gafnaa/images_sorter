@@ -4,6 +4,8 @@ import base64
 import webview
 from threading import Thread
 import sys
+from PIL import Image, ImageOps
+import io
 
 # Define the API class that will be exposed to JavaScript
 class Api:
@@ -59,24 +61,37 @@ class Api:
             print(f"Error scanning folder: {e}")
         return images
 
-    def load_image(self, file_path):
-        """Read an image file and return it as a base64 string."""
-        if not os.path.exists(file_path):
+    def load_image(self, path, is_thumbnail=False):
+        """Read an image file, resize if needed, and return as base64 string."""
+        if not path or not os.path.exists(path):
             return None
         
         try:
-            with open(file_path, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                # Guess mime type based on extension
-                ext = os.path.splitext(file_path)[1].lower()
-                mime = "image/jpeg"
-                if ext == ".png": mime = "image/png"
-                elif ext == ".gif": mime = "image/gif"
-                elif ext == ".webp": mime = "image/webp"
+            # Use PIL to load and resize
+            with Image.open(path) as img:
+                # Handle orientation metadata
+                img = ImageOps.exif_transpose(img)
                 
-                return f"data:{mime};base64,{encoded_string}"
+                # Convert to RGB to avoid alpha channel issues with JPEG
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                
+                # Resize logic
+                if is_thumbnail:
+                    img.thumbnail((150, 150)) # Efficient resize
+                else:
+                    # Limit max resolution for preview to save RAM (e.g., 2K max)
+                    # Most screens are 1080p or 1440p, full 4K/20MB file is wasteful
+                    img.thumbnail((1920, 1080))
+                
+                # Save to buffer
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=80 if is_thumbnail else 90)
+                b64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                return f"data:image/jpeg;base64,{b64_data}"
+                
         except Exception as e:
-            print(f"Error loading image: {e}")
+            print(f"API: Error loading image {path}: {e}")
             return None
 
     def move_image(self, filename, src_folder, dest_folder):

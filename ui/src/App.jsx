@@ -162,7 +162,8 @@ const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
       // Simple path join
       const sep = sourcePath.includes('\\') ? '\\' : '/';
       const fullPath = `${sourcePath}${sep}${filename}`;
-      const b64 = await callApi('load_image', fullPath);
+      // Pass true for is_thumbnail to get optimized small image
+      const b64 = await callApi('load_image', fullPath, true);
       if (mounted && b64) setSrc(b64);
     };
     load();

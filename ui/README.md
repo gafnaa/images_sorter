@@ -1,16 +1,45 @@
-# React + Vite
+# Image Sorter UI 🎨
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The frontend interface for the Image Sorter Pro application, built with **React**, **Vite**, and **Tailwind CSS**.
 
-Currently, two official plugins are available:
+## 🚀 Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Setup
 
-## React Compiler
+```bash
+npm install
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Dev Server
 
-## Expanding the ESLint configuration
+To run the UI in standalone mode (with mocked API calls):
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run dev
+```
+
+The application detects if it's running in a browser environment (outside of PyWebview) and mocks the file system API calls, allowing you to iterate on the UI design without the Python backend running.
+
+### Build
+
+To communicate with the Python backend, the UI must be built into static files:
+
+```bash
+npm run build
+```
+
+The output will be generated in the `dist` directory.
+
+## 📂 Project Structure
+
+- `src/App.jsx`: Main application logic and UI layout.
+- `src/index.css`: Global styles and Tailwind directives.
+- `src/lib`: Helper functions (if any).
+- `dist/`: production build artifacts (generated).
+
+## 🎨 Styling
+
+Styling is handled using **Tailwind CSS**.
+
+- **Dark Mode**: The app is designed with a dark aesthetic by default using Slate colors (`bg-slate-900`, etc.).
+- **Animations**: **Framer Motion** is used for page transitions and interactive elements.

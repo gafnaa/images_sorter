@@ -276,12 +276,15 @@ function App() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                 <FolderOpen size={16} className="text-white" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col mr-4">
                 <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Source</span>
                 <span className="text-sm font-semibold truncate max-w-[300px]" title={sourcePath}>
                     {sourcePath.split(/[/\\]/).pop()}
                 </span>
             </div>
+             <Button onClick={handleSelectSource} variant="ghost" className="!px-3 !py-1 text-xs gap-1 h-8">
+                <RefreshCw size={14} /> Change
+            </Button>
         </div>
         
         <div className="flex items-center gap-4">

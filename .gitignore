@@ -1,6 +1,4 @@
 # PyInstaller - artifacts
-build/
-dist/
 *.spec
 
 # Python - compiled bytecode and cache

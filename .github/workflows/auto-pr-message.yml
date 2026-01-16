@@ -32,19 +32,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          PROMPT="You are a senior software engineer.
-          Generate a concise Pull Request title and description based on this diff:
-
-          $DIFF
-
-          Format:
-          Title: ...
-          Description: ...
-          "
-
+          # Construct the JSON payload safely using jq to handle escaping
           JSON=$(jq -n \
-            --arg text "$PROMPT" \
-            '{contents:[{parts:[{text:$text}]}]}')
+            --arg diff "$DIFF" \
+            '{contents:[{parts:[{text: ("You are a senior software engineer.\nGenerate a concise Pull Request title and description based on this diff:\n\n" + $diff + "\n\nFormat:\nTitle: ...\nDescription: ...")}]}]}' )
 
           RESPONSE=$(curl -s \
             -H "Content-Type: application/json" \
@@ -52,10 +43,25 @@ jobs:
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" \
             -d "$JSON")
 
+          # Check for errors
+          if echo "$RESPONSE" | grep -q '"error":'; then
+            echo "::error::Gemini API returned an error:"
+            echo "$RESPONSE"
+            echo "RESULT=Error: Gemini API call failed. Check logs." >> $GITHUB_ENV
+            exit 0
+          fi
+
           TEXT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
-          echo "RESULT<<EOF" >> $GITHUB_ENV
-          echo "$TEXT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+
+          if [ "$TEXT" == "null" ] || [ -z "$TEXT" ]; then
+             echo "::error::API response structure unexpected:"
+             echo "$RESPONSE"
+             echo "RESULT=Error: Generated message was empty." >> $GITHUB_ENV
+          else
+             echo "RESULT<<EOF" >> $GITHUB_ENV
+             echo "$TEXT" >> $GITHUB_ENV
+             echo "EOF" >> $GITHUB_ENV
+          fi
 
       - name: Update Pull Request
         uses: actions/github-script@v7

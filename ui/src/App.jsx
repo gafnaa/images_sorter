@@ -435,11 +435,11 @@ function App() {
              {/* Delete Button */}
              <Button 
                 onClick={handleDeleteClick} 
-                className="!p-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
+                className="!px-3 !py-1 h-9 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
                 title="Delete Image (Del)"
                 variant="secondary"
              >
-                 <Trash2 size={18} />
+                 <Trash2 size={16} />
              </Button>
              
              {/* Filter Button */}

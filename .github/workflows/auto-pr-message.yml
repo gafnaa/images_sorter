@@ -45,18 +45,23 @@ jobs:
             --arg diff "$DIFF" \
             '{contents:[{parts:[{text: ("You are a senior software engineer.\nGenerate a concise Pull Request title and description based on this diff:\n\n" + $diff + "\n\nFormat:\nTitle: ...\nDescription: ...")}]}]}' > request.json
 
-          # Use gemini-1.5-flash-latest to avoid 404 errors with specific versions
+          # Use gemini-1.5-flash-001 which is a specific stable version
           RESPONSE=$(curl -s \
             -H "Content-Type: application/json" \
             -X POST \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=$GEMINI_API_KEY" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=$GEMINI_API_KEY" \
             -d @request.json)
 
           # Check for errors in the response
           if echo "$RESPONSE" | grep -q '"error":'; then
             echo "::error::Gemini API returned an error:"
             echo "$RESPONSE"
-            echo "RESULT=Error: Gemini API call failed. See logs for details." >> $GITHUB_ENV
+            
+            echo "::group::Debugging - Listing Available Models"
+            curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | jq -r '.models[] | .name + " " + (.supportedGenerationMethods | join(","))'
+            echo "::endgroup::"
+
+            echo "RESULT=Error: Gemini API call failed. Check logs for available models." >> $GITHUB_ENV
             exit 0
           fi
 

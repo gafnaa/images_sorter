@@ -45,11 +45,11 @@ jobs:
             --arg diff "$DIFF" \
             '{contents:[{parts:[{text: ("You are a senior software engineer.\nGenerate a concise Pull Request title and description based on this diff:\n\n" + $diff + "\n\nFormat:\nTitle: ...\nDescription: ...")}]}]}' > request.json
 
-          # Use standard gemini-1.5-flash alias
+          # Use gemini-3-flash-preview as available in the user's model list
           RESPONSE=$(curl -s \
             -H "Content-Type: application/json" \
             -X POST \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$GEMINI_API_KEY" \
             -d @request.json)
 
           # Check for errors in the response

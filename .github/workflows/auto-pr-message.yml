@@ -39,17 +39,23 @@ jobs:
             exit 0
           fi
 
+          if [ -z "$DIFF" ]; then
+            echo "::warning::Diff is empty. Skipping generation."
+            echo "RESULT=No changes detected in the diff." >> $GITHUB_ENV
+            exit 0
+          fi
+
           # Construct the JSON payload safely using jq to handle escaping
           # Save to a file to avoid command line length limits and shell quoting issues
           jq -n \
             --arg diff "$DIFF" \
             '{contents:[{parts:[{text: ("You are a senior software engineer.\nGenerate a concise Pull Request title and description based on this diff:\n\n" + $diff + "\n\nFormat:\nTitle: ...\nDescription: ...")}]}]}' > request.json
 
-          # Use gemini-3-flash-preview as available in the user's model list
+          # Use gemini-2.5-flash as it is listed in available models
           RESPONSE=$(curl -s \
             -H "Content-Type: application/json" \
             -X POST \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=$GEMINI_API_KEY" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$GEMINI_API_KEY" \
             -d @request.json)
 
           # Check for errors in the response

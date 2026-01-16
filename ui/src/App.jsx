@@ -205,6 +205,9 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState(['png', 'jpg', 'jpeg', 'gif', 'webp']);
 
+  // Delete Alert State
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
   // --- Logic ---
   
   // Carousel window logic
@@ -306,10 +309,14 @@ function App() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     if (!images[currentIndex]) return;
-    
-    if (!confirm("Are you sure you want to delete this image?")) return;
+    setShowDeleteAlert(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteAlert(false);
+    if (!images[currentIndex]) return;
 
     const filename = images[currentIndex];
     const res = await callApi('delete_image', filename, sourcePath);
@@ -341,7 +348,7 @@ function App() {
 
       if (e.key === "ArrowRight") handleNext();
       if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Delete") handleDelete(); // Added Delete key shortcut
+      if (e.key === "Delete") handleDeleteClick(); // Updated handler
       
       const num = parseInt(e.key);
       if (!isNaN(num) && num > 0 && num <= destinations.length) {
@@ -350,7 +357,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [destinations, currentIndex, images, handleDelete]); // Added handleDelete to dependencies
+  }, [destinations, currentIndex, images]); // Removed handleDelete from dependencies
 
 
   // --- Render ---
@@ -424,6 +431,16 @@ function App() {
                 <ImageIcon size={14} className="text-gray-400"/>
                 <span className="text-sm font-medium">{images.length} <span className="text-gray-500">pending</span></span>
              </div>
+
+             {/* Delete Button */}
+             <Button 
+                onClick={handleDeleteClick} 
+                className="!p-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
+                title="Delete Image (Del)"
+                variant="secondary"
+             >
+                 <Trash2 size={18} />
+             </Button>
              
              {/* Filter Button */}
              <div className="relative">
@@ -524,22 +541,14 @@ function App() {
                         </AnimatePresence>
 
                         {/* Image Info Overlay */}
+                    {/* Image Info Overlay */}
                     {!isDone && (
                         <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
                              <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
                                 {images[currentIndex]}
                              </div>
-                             
-                             <div className="flex gap-2">
-                                <Button 
-                                    onClick={handleDelete}
-                                    className="!px-3 !py-2 h-9 rounded-lg !bg-red-500/10 hover:!bg-red-500/20 text-red-400 border border-red-500/30"
-                                >
-                                    <Trash2 size={16} />
-                                </Button>
-                                <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400 flex items-center">
-                                    {currentIndex + 1} / {images.length}
-                                </div>
+                             <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400 flex items-center">
+                                {currentIndex + 1} / {images.length}
                              </div>
                         </div>
                     )}

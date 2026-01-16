@@ -146,7 +146,7 @@ def start_app():
         background_color='#0f172a' # Match the theme
     )
     api.set_window(window)
-    webview.start(debug=True)
+    webview.start(debug=False)
 
 if __name__ == '__main__':
     start_app()

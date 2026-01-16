@@ -49,7 +49,14 @@ jobs:
           # Save to a file to avoid command line length limits and shell quoting issues
           jq -n \
             --arg diff "$DIFF" \
-            '{contents:[{parts:[{text: ("You are a senior software engineer.\nGenerate a concise Pull Request title and description based on this diff:\n\n" + $diff + "\n\nFormat:\nTitle: ...\nDescription: ...")}]}]}' > request.json
+            '{contents:[{parts:[{text: ("You are a senior software engineer.\nReview the following code changes and generate a professional Pull Request description in Markdown format.\n" +
+            "The description should be structured as follows:\n" +
+            "1. **Summary**: A high-level overview of what was changed and why.\n" +
+            "2. **Key Changes**: A bulleted list of specific technical changes, filenames, or logic improvements.\n" +
+            "3. **Impact**: (Optional) Mention any performance improvements, UI updates, or breaking changes.\n\n" +
+            "Do NOT include a PR Title, just the description body.\n" +
+            "Do NOT use conversational filler like \"Here is the description\".\n" +
+            "Code Changes:\n" + $diff)}]}]}' > request.json
 
           # Use gemini-2.5-flash as it is listed in available models
           RESPONSE=$(curl -s \

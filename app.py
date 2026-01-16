@@ -109,6 +109,18 @@ class Api:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def delete_image(self, filename, src_folder):
+        """Delete an image file permanently."""
+        try:
+            file_path = os.path.join(src_folder, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return {"success": True}
+            else:
+                return {"success": False, "error": "File not found"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
 def start_app():
     api = Api()
     

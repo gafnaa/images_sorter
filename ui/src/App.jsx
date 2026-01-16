@@ -306,6 +306,26 @@ function App() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!images[currentIndex]) return;
+    
+    if (!confirm("Are you sure you want to delete this image?")) return;
+
+    const filename = images[currentIndex];
+    const res = await callApi('delete_image', filename, sourcePath);
+    
+    if (res && res.success) {
+      const newImages = [...images];
+      newImages.splice(currentIndex, 1);
+      setImages(newImages);
+      if (currentIndex >= newImages.length) {
+        setCurrentIndex(Math.max(0, newImages.length - 1));
+      }
+    } else {
+      alert("Failed to delete image: " + (res?.error || "Unknown error"));
+    }
+  };
+
   const handleNext = () => {
     if (currentIndex < images.length - 1) setCurrentIndex(c => c + 1);
   };
@@ -321,6 +341,7 @@ function App() {
 
       if (e.key === "ArrowRight") handleNext();
       if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "Delete") handleDelete(); // Added Delete key shortcut
       
       const num = parseInt(e.key);
       if (!isNaN(num) && num > 0 && num <= destinations.length) {
@@ -329,7 +350,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [destinations, currentIndex, images]);
+  }, [destinations, currentIndex, images, handleDelete]); // Added handleDelete to dependencies
 
 
   // --- Render ---
@@ -338,10 +359,8 @@ function App() {
     return (
       <div className="h-screen w-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center relative overflow-hidden">
         {/* Abstract Background */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]" />
-            <div className="absolute top-[40%] -right-[10%] w-[40%] h-[60%] bg-purple-600/10 rounded-full blur-[100px]" />
-        </div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]" />
+        <div className="absolute top-[40%] -right-[10%] w-[40%] h-[60%] bg-purple-600/10 rounded-full blur-[100px]" />
 
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
@@ -505,16 +524,25 @@ function App() {
                         </AnimatePresence>
 
                         {/* Image Info Overlay */}
-                        {!isDone && (
-                            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-                                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
-                                    {images[currentIndex]}
-                                </div>
-                                <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400">
+                    {!isDone && (
+                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
+                             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
+                                {images[currentIndex]}
+                             </div>
+                             
+                             <div className="flex gap-2">
+                                <Button 
+                                    onClick={handleDelete}
+                                    className="!px-3 !py-2 h-9 rounded-lg !bg-red-500/10 hover:!bg-red-500/20 text-red-400 border border-red-500/30"
+                                >
+                                    <Trash2 size={16} />
+                                </Button>
+                                <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400 flex items-center">
                                     {currentIndex + 1} / {images.length}
                                 </div>
-                            </div>
-                        )}
+                             </div>
+                        </div>
+                    )}
                     </div>
 
                 </div>

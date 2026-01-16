@@ -190,6 +190,42 @@ const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
   );
 };
 
+// --- Alert Popup ---
+
+const AlertPopup = ({ isOpen, onClose, onConfirm, title, description }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#1e1e1e] border border-white/10 rounded-xl shadow-2xl max-w-sm w-full overflow-hidden"
+            >
+                <div className="p-6">
+                    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">{description}</p>
+                </div>
+                <div className="bg-white/5 px-6 py-4 flex justify-end gap-3">
+                     <Button 
+                        onClick={onClose}
+                        className="bg-transparent hover:bg-white/10 text-white border border-white/10"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={onConfirm}
+                        variant="danger"
+                        className="bg-red-600 hover:bg-red-700 text-white border-none shadow-lg shadow-red-900/20"
+                    >
+                        Delete
+                    </Button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
 // --- MAIN APP ---
 
 function App() {
@@ -639,6 +675,14 @@ function App() {
             </button>
          </div>
       </footer>
+
+      <AlertPopup 
+        isOpen={showDeleteAlert} 
+        onClose={() => setShowDeleteAlert(false)}
+        onConfirm={confirmDelete}
+        title="Delete Image?"
+        description={`Are you sure you want to permanently delete "${images[currentIndex] || 'this image'}"? This action cannot be undone.`}
+      />
     </div>
   )
 }

@@ -42,7 +42,7 @@ jobs:
       - name: Build Executable
         run: |
           # Use ; as separator for Windows add-data
-          pyinstaller --noconfirm --onefile --windowed --name "Image Sorter Pro" --add-data "ui/dist;ui/dist" --icon="ui/public/vite.svg" app.py
+          pyinstaller --noconfirm --onefile --windowed --name "Image Sorter Pro" --add-data "ui/dist;ui/dist" --icon="ui/public/logo.svg" app.py
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v1

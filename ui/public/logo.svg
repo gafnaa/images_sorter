@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background Container (Optional, useful if used as an app icon directly) -->
+  <rect width="512" height="512" rx="104" fill="#0f172a" />
+
+  <!-- Content Group -->
+  <g transform="translate(86, 106)">
+    
+    <!-- Folder Back Tab -->
+    <path d="M20 60 L130 60 L160 30 L320 30 C336 30 350 44 350 60 L350 240 L20 240 Z" fill="#334155" />
+    
+    <!-- Photo Card (Inserting) -->
+    <g transform="translate(60, -20) rotate(-8) scale(0.9)" filter="url(#shadow)">
+       <rect x="0" y="0" width="220" height="160" rx="12" fill="#f8fafc" />
+       <!-- Sun -->
+       <circle cx="170" cy="50" r="18" fill="#fbbf24" />
+       <!-- Mountains -->
+       <path d="M220 160 L140 60 L80 160 Z" fill="#8b5cf6" opacity="0.8" />
+       <path d="M140 160 L60 80 L0 160 Z" fill="#3b82f6" opacity="0.8" />
+    </g>
+
+    <!-- Folder Front Cover -->
+    <path d="M0 270 C0 286 14 300 30 300 L310 300 C326 300 340 286 340 270 L340 110 C340 94 326 80 310 80 L30 80 C14 80 0 94 0 110 Z" fill="url(#mainGrad)" />
+    
+    <!-- Sort Arrow / Symbol -->
+    <g transform="translate(170, 190)" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M-40 0 L40 0" />
+      <path d="M10 -30 L40 0 L10 30" />
+    </g>
+
+  </g>
+</svg>

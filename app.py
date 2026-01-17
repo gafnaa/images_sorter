@@ -48,7 +48,7 @@ class Api:
         images = []
         # Default extensions if none provided
         if not allowed_extensions:
-            valid_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+            valid_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".arw", ".cr2", ".cr3", ".nef", ".raf", ".dng", ".orf", ".rw2"}
         else:
             # Ensure extensions start with dot and are lowercase
             valid_exts = {f".{ext.lower().lstrip('.')}" for ext in allowed_extensions}

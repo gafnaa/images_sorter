@@ -74,7 +74,7 @@ class ImageSorter(ctk.CTk):
 
         self.image_folder = folder
         all_files = os.listdir(self.image_folder)
-        self.image_list = [f for f in all_files if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp"))]
+        self.image_list = [f for f in all_files if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".arw", ".cr2", ".cr3", ".nef", ".raf", ".dng", ".orf", ".rw2"))]
         self.total_images = len(self.image_list)
 
         if not self.image_list:

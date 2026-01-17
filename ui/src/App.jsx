@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import {
   FolderOpen,
   ArrowRight,
@@ -15,11 +15,95 @@ import {
   X,
   Filter,
   Info,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import clsx from "clsx";
 // ...
 
 // ... (Other components)
+
+const ZoomableImage = ({ src, alt }) => {
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef(null);
+  const dragControls = useDragControls();
+
+  // Reset function
+  const resetZoom = () => setScale(1);
+
+  // Reset zoom when src changes
+  useEffect(() => {
+    resetZoom();
+  }, [src]);
+
+  const handleWheel = (e) => {
+    e.stopPropagation();
+    const delta = -Math.sign(e.deltaY) * 0.25;
+    setScale((s) => Math.min(Math.max(1, s + delta), 8));
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full flex items-center justify-center overflow-hidden touch-none"
+      onWheel={handleWheel}
+      onPointerDown={(e) => {
+        if (scale > 1) {
+          dragControls.start(e);
+        }
+      }}
+      style={{ touchAction: "none" }}
+    >
+      {/* Controls - Only show when useful or on hover */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 opacity-0 hover:opacity-100 transition-opacity z-50">
+        <button
+          className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
+          onClick={() => setScale((s) => Math.max(1, s - 0.5))}
+        >
+          <ZoomOut size={16} />
+        </button>
+        <span className="text-xs font-mono min-w-[3rem] text-center text-gray-300">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
+          onClick={() => setScale((s) => Math.min(8, s + 0.5))}
+        >
+          <ZoomIn size={16} />
+        </button>
+        <div className="w-px h-4 bg-white/20 mx-1"></div>
+        <button
+          className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
+          onClick={resetZoom}
+        >
+          <RotateCcw size={14} />
+        </button>
+      </div>
+
+      <motion.img
+        src={src}
+        alt={alt}
+        className={clsx(
+          "relative max-w-full max-h-full object-contain z-10 transition-shadow",
+          scale > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-default",
+        )}
+        animate={{ scale }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        drag={scale > 1}
+        dragListener={false}
+        dragControls={dragControls}
+        dragConstraints={containerRef}
+        dragElastic={0.1}
+        // Add a subtle shadow when zoomed to distinct from background
+        style={{
+          boxShadow:
+            scale > 1 ? "0 20px 50px -12px rgba(0, 0, 0, 0.5)" : "none",
+        }}
+      />
+    </div>
+  );
+};
 
 const MetadataPanel = ({ data, onClose }) => {
   if (!data) return null;
@@ -814,11 +898,7 @@ function App() {
                               backgroundImage: `url(${currentImageSrc})`,
                             }}
                           />
-                          <img
-                            src={currentImageSrc}
-                            className="relative max-w-full max-h-full object-contain rounded-xl shadow-lg z-10 transition-transform duration-500"
-                            alt=""
-                          />
+                          <ZoomableImage src={currentImageSrc} alt="" />
                         </>
                       ) : (
                         <div className="text-gray-600 flex flex-col items-center">

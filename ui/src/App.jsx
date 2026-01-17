@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import {
   motion,
   AnimatePresence,
   useDragControls,
   useMotionValue,
+  animate,
 } from "framer-motion";
 import {
   FolderOpen,
@@ -29,7 +36,7 @@ import clsx from "clsx";
 
 // ... (Other components)
 
-const ZoomableImage = ({ src, alt }) => {
+const ZoomableImage = forwardRef(({ src, alt }, ref) => {
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
   const dragControls = useDragControls();
@@ -39,13 +46,20 @@ const ZoomableImage = ({ src, alt }) => {
   // Reset function
   const resetZoom = () => {
     setScale(1);
-    x.set(0);
-    y.set(0);
+    animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+    animate(y, 0, { type: "spring", stiffness: 300, damping: 30 });
   };
+
+  useImperativeHandle(ref, () => ({
+    resetZoom,
+  }));
 
   // Reset zoom when src changes
   useEffect(() => {
-    resetZoom();
+    // Instant reset without animation when image changes
+    setScale(1);
+    x.set(0);
+    y.set(0);
   }, [src]);
 
   const handleWheel = (e) => {
@@ -54,10 +68,10 @@ const ZoomableImage = ({ src, alt }) => {
     const newScale = Math.min(Math.max(1, scale + delta), 8);
     setScale(newScale);
 
-    // If zooming out to 1, reset position
+    // If zooming out to 1, animate reset position
     if (newScale === 1) {
-      x.set(0);
-      y.set(0);
+      animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+      animate(y, 0, { type: "spring", stiffness: 300, damping: 30 });
     }
   };
 
@@ -77,12 +91,13 @@ const ZoomableImage = ({ src, alt }) => {
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 opacity-0 hover:opacity-100 transition-opacity z-50">
         <button
           className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             const newScale = Math.max(1, scale - 0.5);
             setScale(newScale);
             if (newScale === 1) {
-              x.set(0);
-              y.set(0);
+              animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+              animate(y, 0, { type: "spring", stiffness: 300, damping: 30 });
             }
           }}
         >
@@ -93,14 +108,20 @@ const ZoomableImage = ({ src, alt }) => {
         </span>
         <button
           className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
-          onClick={() => setScale((s) => Math.min(8, s + 0.5))}
+          onClick={(e) => {
+            e.stopPropagation();
+            setScale((s) => Math.min(8, s + 0.5));
+          }}
         >
           <ZoomIn size={16} />
         </button>
         <div className="w-px h-4 bg-white/20 mx-1"></div>
         <button
           className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
-          onClick={resetZoom}
+          onClick={(e) => {
+            e.stopPropagation();
+            resetZoom();
+          }}
         >
           <RotateCcw size={14} />
         </button>
@@ -131,7 +152,7 @@ const ZoomableImage = ({ src, alt }) => {
       />
     </div>
   );
-};
+});
 
 const MetadataPanel = ({ data, onClose }) => {
   if (!data) return null;
@@ -515,6 +536,8 @@ function App() {
   const [metadata, setMetadata] = useState(null);
   const [showMetadata, setShowMetadata] = useState(false);
 
+  const imageRef = useRef(null);
+
   // --- Logic ---
 
   // Carousel window logic
@@ -877,7 +900,15 @@ function App() {
           </div>
 
           {/* Center Canvas */}
-          <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-0">
+          <div
+            className="flex-1 flex flex-col items-center justify-center p-4 min-h-0"
+            onClick={(e) => {
+              // Reset zoom if clicking the padding area (outside image container)
+              if (e.target === e.currentTarget) {
+                imageRef.current?.resetZoom();
+              }
+            }}
+          >
             <div className="relative w-full h-full max-w-5xl max-h-full flex flex-col">
               {/* Image Container */}
               <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#111] border border-white/5 shadow-2xl flex items-center justify-center group">
@@ -926,7 +957,11 @@ function App() {
                               backgroundImage: `url(${currentImageSrc})`,
                             }}
                           />
-                          <ZoomableImage src={currentImageSrc} alt="" />
+                          <ZoomableImage
+                            ref={imageRef}
+                            src={currentImageSrc}
+                            alt=""
+                          />
                         </>
                       ) : (
                         <div className="text-gray-600 flex flex-col items-center">

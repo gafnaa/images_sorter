@@ -13,9 +13,60 @@ import {
   Move,
   Settings,
   X,
-  Filter
+  Filter,
+  Info
 } from 'lucide-react';
 import clsx from 'clsx';
+// ...
+
+// ... (Other components)
+
+const MetadataPanel = ({ data, onClose }) => {
+  if (!data) return null;
+
+  const items = [
+    { label: 'Resolution', value: data.resolution },
+    { label: 'Size', value: data.size },
+    { label: 'Format', value: data.format },
+    { label: 'Date', value: data.date },
+    { label: 'Camera', value: data.camera },
+    { label: 'ISO', value: data.iso },
+    { label: 'Aperture', value: data.aperture },
+    { label: 'Shutter', value: data.shutter },
+  ];
+
+  return (
+    <motion.div 
+      initial={{ x: 300, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 300, opacity: 0 }}
+      className="absolute top-16 right-0 bottom-48 w-64 bg-black/40 backdrop-blur-xl border-l border-white/10 p-6 z-20 overflow-y-auto"
+    >
+        <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Info size={18} className="text-blue-400" /> Info
+            </h3>
+            <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={16} />
+            </button>
+        </div>
+
+        <div className="space-y-4">
+            {items.map((item, idx) => item.value && (
+                <div key={idx} className="group">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">{item.label}</span>
+                    <span className="text-sm text-gray-200 font-mono break-words">{item.value}</span>
+                </div>
+            ))}
+             <div className="pt-4 border-t border-white/10">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Filename</span>
+                <span className="text-xs text-gray-400 break-all">{data.filename}</span>
+            </div>
+        </div>
+    </motion.div>
+  );
+};
+
 
 // --- API HANDLING ---
 
@@ -37,6 +88,7 @@ const callApi = async (method, ...args) => {
     if (method === 'move_image') return { success: true };
     if (method === 'delete_image') return { success: true };
     if (method === 'restore_image') return { success: true };
+    if (method === 'get_image_metadata') return { resolution: '1920x1080', size: '2.5 MB', format: 'JPEG', date: '2023:01:01 12:00:00', camera: 'Sony A7III', iso: '100', aperture: 'f/2.8', shutter: '1/200' };
     return null;
   }
 };
@@ -248,6 +300,10 @@ function App() {
 
   // Undo History
   const [history, setHistory] = useState([]);
+  
+  // Metadata State
+  const [metadata, setMetadata] = useState(null);
+  const [showMetadata, setShowMetadata] = useState(false);
 
   // --- Logic ---
   
@@ -294,6 +350,9 @@ function App() {
       if (currentIndex === loadRef.current) { 
         setCurrentImageSrc(b64);
         setLoadingImage(false);
+        // Fetch metadata
+        const meta = await callApi('get_image_metadata', filename, sourcePath);
+        if (currentIndex === loadRef.current) setMetadata(meta);
       }
     };
 
@@ -523,7 +582,17 @@ function App() {
              </Button>
              
              {/* Filter Button */}
-             <div className="relative">
+             <div className="flex items-center gap-2">
+                 <Button 
+                    onClick={() => setShowMetadata(!showMetadata)} 
+                    variant={showMetadata ? 'primary' : 'secondary'}
+                    className="!px-3 !py-1 h-9 rounded-lg"
+                    title="Toggle Info"
+                 >
+                     <Info size={16} />
+                 </Button>
+
+                 <div className="relative">
                 <Button 
                     onClick={() => setShowFilters(!showFilters)} 
                     variant={showFilters ? 'primary' : 'secondary'}
@@ -543,11 +612,15 @@ function App() {
                     )}
                 </AnimatePresence>
              </div>
+             </div>
         </div>
       </header>
 
       {/* Main Workspace */}
       <main className="flex-1 flex overflow-hidden relative z-10 flex-col">
+        <AnimatePresence>
+            {showMetadata && <MetadataPanel data={metadata} onClose={() => setShowMetadata(false)} />}
+        </AnimatePresence>
         
         <div className="flex-1 flex w-full relative">
             {/* Left Nav */}

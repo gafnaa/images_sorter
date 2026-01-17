@@ -383,21 +383,21 @@ const DestinationCard = ({ path, index, onClick, onRemove }) => {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
       onClick={onClick}
-      className="group relative flex-shrink-0 w-36 h-32 cursor-pointer"
+      className="group relative flex-shrink-0 w-40 h-32 cursor-pointer"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md rounded-2xl border border-white/10 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 transition-all duration-300"></div>
+      <div className="absolute inset-0 bg-[#0f0f0f] hover:bg-[#151520] rounded-2xl border border-white/5 hover:border-indigo-500/50 shadow-lg hover:shadow-indigo-500/20 transition-all duration-300"></div>
 
       {/* Shortcut Indicator */}
-      <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-bold text-gray-400 group-hover:text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+      <div className="absolute top-2 left-2 w-6 h-6 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-[10px] font-bold text-gray-500 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-colors">
         {index + 1}
       </div>
 
       {/* Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center">
-        <div className="mb-3 p-2 bg-blue-500/20 rounded-lg text-blue-400 group-hover:scale-110 group-hover:text-white group-hover:bg-blue-500 transition-all duration-300">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+        <div className="mb-3 p-2.5 bg-gradient-to-br from-indigo-500/10 to-violet-500/10 rounded-xl text-gray-400 group-hover:text-white group-hover:from-indigo-500 group-hover:to-violet-500 shadow-inner group-hover:shadow-lg transition-all duration-300 transform group-hover:-translate-y-1">
           <Folder size={24} />
         </div>
-        <span className="text-xs font-medium text-gray-300 group-hover:text-white line-clamp-2 leading-tight break-all max-w-full">
+        <span className="text-xs font-semibold text-gray-400 group-hover:text-gray-100 line-clamp-2 leading-tight break-all max-w-full transition-colors">
           {name}
         </span>
       </div>
@@ -408,9 +408,9 @@ const DestinationCard = ({ path, index, onClick, onRemove }) => {
           e.stopPropagation();
           onRemove(path);
         }}
-        className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-200"
+        className="absolute -top-2 -right-2 w-7 h-7 bg-[#1a1a1a] border border-white/10 hover:bg-red-500 hover:border-red-400 text-gray-400 hover:text-white rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 transition-all duration-200 z-10"
       >
-        <X size={14} />
+        <X size={12} />
       </button>
     </motion.div>
   );
@@ -776,89 +776,104 @@ function App() {
   const isDone = images.length === 0 && !loading;
 
   return (
-    <div className="h-screen w-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden relative font-sans">
-      {/* Background Gradients */}
+    <div className="h-screen w-screen bg-[#050505] text-white flex flex-col overflow-hidden relative font-sans selection:bg-indigo-500/30">
+      {/* Refined Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-[10%] left-[20%] w-[60%] h-[40%] bg-blue-900/10 rounded-full blur-[100px]" />
+        <div className="absolute -top-[20%] left-[10%] w-[70%] h-[50%] bg-indigo-900/10 rounded-full blur-[130px]" />
+        <div className="absolute bottom-[0%] right-[0%] w-[50%] h-[60%] bg-fuchsia-900/05 rounded-full blur-[130px]" />
       </div>
 
-      {/* Top Bar */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-black/20 backdrop-blur-md z-20 relative">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <FolderOpen size={16} className="text-white" />
-          </div>
-          <div className="flex flex-col mr-4">
-            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-              Source
-            </span>
-            <span
-              className="text-sm font-semibold truncate max-w-[300px]"
-              title={sourcePath}
-            >
-              {sourcePath.split(/[/\\]/).pop()}
-            </span>
+      {/* Modern Glass Header */}
+      <header className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-[#050505]/60 backdrop-blur-xl z-20 relative shadow-sm">
+        <div className="flex items-center gap-5">
+          <div className="group flex items-center gap-3 cursor-default">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow">
+              <FolderOpen size={18} className="text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest leading-none mb-1">
+                Source
+              </span>
+              <span
+                className="text-sm font-semibold truncate max-w-[250px] text-gray-100"
+                title={sourcePath}
+              >
+                {sourcePath.split(/[/\\]/).pop()}
+              </span>
+            </div>
           </div>
           <Button
             onClick={handleSelectSource}
             variant="ghost"
-            className="!px-3 !py-1 text-xs gap-1 h-8"
+            className="!px-3 !py-1.5 text-xs gap-1.5 h-auto text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 transition-all"
           >
-            <RefreshCw size={14} /> Change
+            <RefreshCw size={12} /> Change
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
-            <ImageIcon size={14} className="text-gray-400" />
-            <span className="text-sm font-medium">
+        <div className="flex items-center gap-3">
+          <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2.5 backdrop-blur-md">
+            <ImageIcon size={14} className="text-indigo-400" />
+            <span className="text-sm font-medium text-gray-200">
               {images.length} <span className="text-gray-500">pending</span>
             </span>
           </div>
+
+          <div className="w-px h-6 bg-white/10 mx-2"></div>
 
           {/* Undo Button */}
           <Button
             onClick={handleUndo}
             disabled={history.length === 0}
-            className="!px-3 !py-1 h-9 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border-blue-500/20 disabled:opacity-30 disabled:hover:bg-transparent disabled:text-gray-600 disabled:border-transparent"
+            className="!p-2.5 w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white disabled:opacity-20 transition-all"
             title="Undo (Ctrl+Z)"
-            variant="secondary"
+            variant="ghost"
           >
-            <div className="flex items-center gap-1">
-              <span className="text-xs uppercase font-bold">Undo</span>
-            </div>
+            <RotateCcw size={18} />
           </Button>
 
           {/* Delete Button */}
           <Button
             onClick={handleDeleteClick}
-            className="!px-3 !py-1 h-9 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
+            className="!p-2.5 w-10 h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/10 text-red-500 hover:text-red-400 transition-all"
             title="Delete Image (Del)"
-            variant="secondary"
+            variant="ghost"
           >
-            <Trash2 size={16} />
+            <Trash2 size={18} />
           </Button>
 
-          {/* Filter Button */}
-          <div className="flex items-center gap-2">
+          <div className="w-px h-6 bg-white/10 mx-2"></div>
+
+          {/* Tools Group */}
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
             <Button
               onClick={() => setShowMetadata(!showMetadata)}
-              variant={showMetadata ? "primary" : "secondary"}
-              className="!px-3 !py-1 h-9 rounded-lg"
+              variant="ghost"
+              className={clsx(
+                "!p-2 w-9 h-9 rounded-lg transition-all",
+                showMetadata
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                  : "text-gray-400 hover:text-white hover:bg-white/5",
+              )}
               title="Toggle Info"
             >
-              <Info size={16} />
+              <Info size={18} />
             </Button>
 
             <div className="relative">
               <Button
                 onClick={() => setShowFilters(!showFilters)}
-                variant={showFilters ? "primary" : "secondary"}
-                className="!px-3 !py-1 h-9 rounded-lg"
+                variant="ghost"
+                className={clsx(
+                  "!p-2 w-9 h-9 rounded-lg transition-all",
+                  showFilters
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-gray-400 hover:text-white hover:bg-white/5",
+                )}
               >
-                <Filter size={16} />
-                {filters.length !== 5 && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-[#0a0a0a]"></span>
+                <Filter size={18} />
+                {filters.length !== 13 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#1e1e1e]"></span>
                 )}
               </Button>
 
@@ -911,7 +926,7 @@ function App() {
           >
             <div className="relative w-full h-full max-w-5xl max-h-full flex flex-col">
               {/* Image Container */}
-              <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#111] border border-white/5 shadow-2xl flex items-center justify-center group">
+              <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-[0_0_60px_-15px_rgba(79,70,229,0.1)] flex items-center justify-center group ring-1 ring-white/5">
                 <AnimatePresence mode="wait">
                   {isDone ? (
                     <motion.div
@@ -1035,18 +1050,18 @@ function App() {
       </main>
 
       {/* Bottom Dock (Destinations) */}
-      <footer className="h-48 border-t border-white/5 bg-[#0d0d0d]/80 backdrop-blur-xl z-30 flex flex-col">
-        <div className="px-6 py-3 flex items-center justify-between border-b border-white/5">
+      <footer className="h-52 border-t border-white/5 bg-[#080808]/90 backdrop-blur-2xl z-30 flex flex-col shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)]">
+        <div className="px-6 py-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
           <div className="flex items-center gap-2 text-gray-400">
-            <Move size={14} />
-            <span className="text-xs font-bold uppercase tracking-widest">
+            <Move size={14} className="text-indigo-500" />
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
               Destinations
             </span>
           </div>
 
           <button
             onClick={handleAddDestination}
-            className="text-xs flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors uppercase font-bold tracking-wider"
+            className="text-xs flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors uppercase font-bold tracking-wider px-3 py-1.5 rounded-lg hover:bg-indigo-500/10"
           >
             <Plus size={14} /> Add Folder
           </button>
@@ -1067,13 +1082,13 @@ function App() {
 
           <button
             onClick={handleAddDestination}
-            className="flex-shrink-0 w-24 h-24 border border-dashed border-white/10 hover:border-white/30 hover:bg-white/5 rounded-2xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-gray-300 transition-all group"
+            className="flex-shrink-0 w-36 h-32 border border-dashed border-white/10 hover:border-indigo-500/30 hover:bg-indigo-500/5 rounded-2xl flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-indigo-400 transition-all group"
           >
-            <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10">
+            <div className="p-3 rounded-full bg-white/5 group-hover:bg-indigo-500/10 transition-colors">
               <Plus size={20} />
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider">
-              New
+              New Folder
             </span>
           </button>
         </div>

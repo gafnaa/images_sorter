@@ -3,6 +3,7 @@ import shutil
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image
+import gc # Import the garbage collector module
 
 # --- Attempt to import PyMuPDF and set a flag ---
 try:
@@ -11,16 +12,20 @@ try:
 except ImportError:
     pymupdf_available = False
 
+# --- OPTIMIZATION CONSTANTS ---
+MAX_PAGES_TO_PREVIEW = 5 # Only render the first 5 pages
+PREVIEW_DPI = 96         # Use a lower DPI for previews to save memory
+
 class PDFSorter(ctk.CTk):
     """
-    A GUI application for sorting PDF files, featuring a full, scrollable
-    preview of the document pages.
+    An optimized GUI application for sorting PDF files, featuring a memory-efficient,
+    scrollable preview of the document's initial pages.
     """
     def __init__(self):
         super().__init__()
 
         # --- Basic App Setup ---
-        self.title("PDF Sorter 📂 (with Scrolling Preview)")
+        self.title("Optimized PDF Sorter 🚀")
         self.geometry("850x800")
         ctk.set_appearance_mode("Dark")
         ctk.set_default_color_theme("blue")
@@ -30,8 +35,9 @@ class PDFSorter(ctk.CTk):
         self.destination_folders = []
         self.pdf_list = []
         self.current_index = 0
-        self.total_files = 0
+        self.total_files_sorted = 0 # Better metric for progress
         self.current_doc = None # To hold the active fitz.Document object
+        self.image_references = [] # Keep explicit references to images to prevent garbage collection issues with Tkinter
 
         if not pymupdf_available:
             self.after(100, self._show_dependency_warning)
@@ -67,7 +73,6 @@ class PDFSorter(ctk.CTk):
         self.scrollable_preview_frame.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
         self.scrollable_preview_frame.grid_columnconfigure(0, weight=1)
 
-        # Initial message inside the scrollable frame
         self.initial_preview_label = ctk.CTkLabel(self.scrollable_preview_frame, text="📄\n\nYour PDF preview will appear here.", font=ctk.CTkFont(size=20))
         self.initial_preview_label.grid(row=0, column=0, padx=10, pady=20)
 
@@ -101,7 +106,6 @@ class PDFSorter(ctk.CTk):
         try:
             all_files = os.listdir(self.source_folder)
             self.pdf_list = sorted([f for f in all_files if f.lower().endswith(".pdf")])
-            self.total_files = len(self.pdf_list)
         except FileNotFoundError:
             messagebox.showerror("Error", "Source folder not found.")
             return
@@ -125,6 +129,7 @@ class PDFSorter(ctk.CTk):
 
         self._create_destination_buttons()
         self.current_index = 0
+        self.total_files_sorted = 0
         self.display_current_file()
 
     def _create_destination_buttons(self):
@@ -143,9 +148,13 @@ class PDFSorter(ctk.CTk):
             btn.grid(row=0, column=i, padx=5, pady=5, sticky="ew")
 
     def _clear_preview(self):
-        """Removes all widgets from the scrollable preview frame."""
+        """Removes all widgets from the scrollable preview frame and cleans up memory."""
         for widget in self.scrollable_preview_frame.winfo_children():
             widget.destroy()
+        # **OPTIMIZATION**: Clear references and call garbage collector
+        self.image_references.clear()
+        gc.collect()
+
 
     def display_current_file(self):
         """Updates the UI to show a preview and info for the current PDF file."""
@@ -155,24 +164,23 @@ class PDFSorter(ctk.CTk):
             self.current_doc.close()
             self.current_doc = None
 
-        if not self.pdf_list:
+        if not self.pdf_list or self.current_index >= len(self.pdf_list):
             self.initial_preview_label = ctk.CTkLabel(self.scrollable_preview_frame, text="🎉\n\nAll PDFs have been sorted!", font=ctk.CTkFont(size=20))
             self.initial_preview_label.grid(row=0, column=0, padx=10, pady=20)
             self.filename_label.configure(text="File: Done!")
-            self.progress_label.configure(text=f"PDF: {self.total_files} of {self.total_files}")
+            self.progress_label.configure(text=f"Sorted: {self.total_files_sorted}")
             self.prev_btn.configure(state="disabled")
             self.next_btn.configure(state="disabled")
+            for btn in self.button_frame.winfo_children():
+                btn.configure(state="disabled")
             return
 
-        self.prev_btn.configure(state="normal")
+        self.prev_btn.configure(state="disabled" if self.current_index == 0 else "normal")
         self.next_btn.configure(state="normal")
-
-        if self.current_index >= len(self.pdf_list):
-            self.current_index = len(self.pdf_list) - 1
 
         current_filename = self.pdf_list[self.current_index]
         self.filename_label.configure(text=f"File: {current_filename}")
-        self.progress_label.configure(text=f"PDF: {self.current_index + 1} of {len(self.pdf_list)}")
+        self.progress_label.configure(text=f"Remaining: {len(self.pdf_list) - self.current_index} | Sorted: {self.total_files_sorted}")
         
         if pymupdf_available:
             self._render_pdf_preview(current_filename)
@@ -181,21 +189,39 @@ class PDFSorter(ctk.CTk):
             fallback_label.grid(row=0, column=0, padx=10, pady=20)
 
     def _render_pdf_preview(self, filename):
-        """Renders all pages of a PDF and places them in the scrollable frame."""
+        """
+        Renders a limited number of pages of a PDF at a lower resolution 
+        and places them in the scrollable frame.
+        """
         try:
             pdf_path = os.path.join(self.source_folder, filename)
             self.current_doc = fitz.open(pdf_path)
+            
+            # **OPTIMIZATION**: Limit the number of pages to render
+            num_pages_to_render = min(len(self.current_doc), MAX_PAGES_TO_PREVIEW)
 
-            for page_num in range(len(self.current_doc)):
+            for page_num in range(num_pages_to_render):
                 page = self.current_doc.load_page(page_num)
-                pix = page.get_pixmap(dpi=150)
+                # **OPTIMIZATION**: Use a lower DPI for the pixmap
+                pix = page.get_pixmap(dpi=PREVIEW_DPI)
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 
-                # Use a smaller size for the CTkImage to manage memory and performance
-                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(pix.width / 1.5, pix.height / 1.5))
+                # **OPTIMIZATION**: No need to resize in CTkImage, already done by DPI
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(img.width, img.height))
                 
+                # Store a reference to the image object
+                self.image_references.append(ctk_img)
+
                 page_label = ctk.CTkLabel(self.scrollable_preview_frame, text="", image=ctk_img)
                 page_label.grid(row=page_num, column=0, padx=10, pady=10)
+            
+            # If there are more pages, add a label indicating that
+            if len(self.current_doc) > num_pages_to_render:
+                more_pages_label = ctk.CTkLabel(self.scrollable_preview_frame, 
+                                                text=f"... and {len(self.current_doc) - num_pages_to_render} more pages.",
+                                                font=ctk.CTkFont(size=12, slant="italic"))
+                more_pages_label.grid(row=num_pages_to_render, column=0, padx=10, pady=10)
+
 
         except Exception as e:
             error_label = ctk.CTkLabel(self.scrollable_preview_frame, text=f"📄\n\nCould not preview:\n{filename}\n\nError: {e}", font=ctk.CTkFont(size=14))
@@ -206,15 +232,16 @@ class PDFSorter(ctk.CTk):
 
     def move_file(self, destination_folder):
         """Moves the current PDF file to the specified destination folder."""
-        if not self.pdf_list: return
+        if not self.pdf_list or self.current_index >= len(self.pdf_list): return
 
         # IMPORTANT: Close the file handle before moving it
         if self.current_doc:
             self.current_doc.close()
             self.current_doc = None
 
-        source_path = os.path.join(self.source_folder, self.pdf_list[self.current_index])
-        destination_path = os.path.join(destination_folder, self.pdf_list[self.current_index])
+        current_file_name = self.pdf_list[self.current_index]
+        source_path = os.path.join(self.source_folder, current_file_name)
+        destination_path = os.path.join(destination_folder, current_file_name)
 
         try:
             if os.path.exists(destination_path):
@@ -224,6 +251,8 @@ class PDFSorter(ctk.CTk):
 
             shutil.move(source_path, destination_folder)
             del self.pdf_list[self.current_index]
+            self.total_files_sorted += 1
+            # After moving, display the next file at the *same* index
             self.display_current_file()
             
         except Exception as e:
@@ -231,7 +260,7 @@ class PDFSorter(ctk.CTk):
             self.display_current_file() # Re-open file if move failed
 
     def next_file(self):
-        """Navigates to the next file in the list."""
+        """Navigates to the next file in the list (skips current)."""
         if self.current_index < len(self.pdf_list) - 1:
             self.current_index += 1
             self.display_current_file()
@@ -250,5 +279,5 @@ class PDFSorter(ctk.CTk):
 
 if __name__ == "__main__":
     app = PDFSorter()
-    app.protocol("WM_DELETE_WINDOW", app.on_closing) # Ensure file handles are closed on exit
+    app.protocol("WM_DELETE_WINDOW", app.on_closing)
     app.mainloop()

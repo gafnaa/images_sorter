@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useDragControls,
+  useMotionValue,
+} from "framer-motion";
 import {
   FolderOpen,
   ArrowRight,
@@ -28,9 +33,15 @@ const ZoomableImage = ({ src, alt }) => {
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
   const dragControls = useDragControls();
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
 
   // Reset function
-  const resetZoom = () => setScale(1);
+  const resetZoom = () => {
+    setScale(1);
+    x.set(0);
+    y.set(0);
+  };
 
   // Reset zoom when src changes
   useEffect(() => {
@@ -40,7 +51,14 @@ const ZoomableImage = ({ src, alt }) => {
   const handleWheel = (e) => {
     e.stopPropagation();
     const delta = -Math.sign(e.deltaY) * 0.25;
-    setScale((s) => Math.min(Math.max(1, s + delta), 8));
+    const newScale = Math.min(Math.max(1, scale + delta), 8);
+    setScale(newScale);
+
+    // If zooming out to 1, reset position
+    if (newScale === 1) {
+      x.set(0);
+      y.set(0);
+    }
   };
 
   return (
@@ -55,11 +73,18 @@ const ZoomableImage = ({ src, alt }) => {
       }}
       style={{ touchAction: "none" }}
     >
-      {/* Controls - Only show when useful or on hover */}
+      {/* Controls */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-md rounded-full border border-white/10 opacity-0 hover:opacity-100 transition-opacity z-50">
         <button
           className="p-1.5 hover:text-blue-400 text-white transition active:scale-90"
-          onClick={() => setScale((s) => Math.max(1, s - 0.5))}
+          onClick={() => {
+            const newScale = Math.max(1, scale - 0.5);
+            setScale(newScale);
+            if (newScale === 1) {
+              x.set(0);
+              y.set(0);
+            }
+          }}
         >
           <ZoomOut size={16} />
         </button>
@@ -89,17 +114,20 @@ const ZoomableImage = ({ src, alt }) => {
           scale > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-default",
         )}
         animate={{ scale }}
+        // Bind motion values to style (framer motion handles this efficiently)
+        style={{
+          x,
+          y,
+          boxShadow:
+            scale > 1 ? "0 20px 50px -12px rgba(0, 0, 0, 0.5)" : "none",
+        }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         drag={scale > 1}
         dragListener={false}
         dragControls={dragControls}
-        dragConstraints={containerRef}
-        dragElastic={0.1}
-        // Add a subtle shadow when zoomed to distinct from background
-        style={{
-          boxShadow:
-            scale > 1 ? "0 20px 50px -12px rgba(0, 0, 0, 0.5)" : "none",
-        }}
+        // Remove tight constraints, allow free movement but with friction if going far
+        dragConstraints={{ left: -2000, right: 2000, top: -2000, bottom: 2000 }}
+        dragElastic={0.05}
       />
     </div>
   );

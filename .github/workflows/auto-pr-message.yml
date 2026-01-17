@@ -50,12 +50,13 @@ jobs:
           jq -n \
             --arg diff "$DIFF" \
             '{contents:[{parts:[{text: ("You are a senior software engineer.\nReview the following code changes and generate a professional Pull Request description in Markdown format.\n" +
-            "The description should be structured as follows:\n" +
-            "1. **Summary**: A high-level overview of what was changed and why.\n" +
-            "2. **Key Changes**: A bulleted list of specific technical changes, filenames, or logic improvements.\n" +
-            "3. **Impact**: (Optional) Mention any performance improvements, UI updates, or breaking changes.\n\n" +
-            "Do NOT include a PR Title, just the description body.\n" +
-            "Do NOT use conversational filler like \"Here is the description\".\n" +
+            "The output MUST start with the Title on the first line, formatted as `Title: <Concise Imperative Title>`.\n" +
+            "Followed by a blank line, and then the detailed description body.\n\n" +
+            "Description Structure:\n" +
+            "1. **Summary**: A high-level overview.\n" +
+            "2. **Key Changes**: A bulleted list of technical changes.\n" +
+            "3. **Impact**: (Optional) Performance/UI/Breaking changes.\n\n" +
+            "Do NOT use conversational filler.\n" +
             "Code Changes:\n" + $diff)}]}]}' > request.json
 
           # Use gemini-2.5-flash as it is listed in available models
@@ -96,11 +97,31 @@ jobs:
           RESULT: ${{ env.RESULT }}
         with:
           script: |
-            const body = process.env.RESULT || "Auto generated PR message failed.";
+            const result = process.env.RESULT || "Auto generated PR message failed.";
+            const lines = result.split("\n");
 
-            await github.rest.pulls.update({
+            let title = "";
+            let body = result;
+
+            // Access context to get current title if we fail to generate one, 
+            // but we usually want to overwrite or better yet, if the AI provided one, use it.
+
+            if (lines.length > 0 && lines[0].startsWith("Title: ")) {
+              title = lines[0].replace("Title: ", "").trim();
+              // Remove the title line and any immediate following blank lines for the body
+              body = lines.slice(1).join("\n").trim();
+            }
+
+            const updateParams = {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.issue.number,
               body: body
-            });
+            };
+
+            // Only update title if we extracted one
+            if (title) {
+              updateParams.title = title;
+            }
+
+            await github.rest.pulls.update(updateParams);

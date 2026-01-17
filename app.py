@@ -110,14 +110,35 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def delete_image(self, filename, src_folder):
-        """Delete an image file permanently."""
+        """Soft delete: Move image to a .trash folder inside src_folder."""
         try:
-            file_path = os.path.join(src_folder, filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            trash_path = os.path.join(src_folder, '.trash')
+            if not os.path.exists(trash_path):
+                os.makedirs(trash_path)
+            
+            src_path = os.path.join(src_folder, filename)
+            dest_path = os.path.join(trash_path, filename)
+            
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
                 return {"success": True}
             else:
                 return {"success": False, "error": "File not found"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def restore_image(self, filename, src_folder):
+        """Restore image from .trash folder."""
+        try:
+            trash_path = os.path.join(src_folder, '.trash')
+            src_path = os.path.join(trash_path, filename) # It is now in trash
+            dest_path = os.path.join(src_folder, filename) # Moving back to original source
+            
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
+                return {"success": True}
+            else:
+                return {"success": False, "error": "File in trash not found"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

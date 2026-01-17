@@ -35,6 +35,8 @@ const callApi = async (method, ...args) => {
     if (method === 'scan_images') return Array.from({length: 5}, (_, i) => `photo_${i+1}.jpg`);
     if (method === 'load_image') return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop';
     if (method === 'move_image') return { success: true };
+    if (method === 'delete_image') return { success: true };
+    if (method === 'restore_image') return { success: true };
     return null;
   }
 };
@@ -244,6 +246,9 @@ function App() {
   // Delete Alert State
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
+  // Undo History
+  const [history, setHistory] = useState([]);
+
   // --- Logic ---
   
   // Carousel window logic
@@ -269,10 +274,7 @@ function App() {
     if (sourcePath) {
         scan();
     }
-  }, [filters, sourcePath]); // Re-run when source or filters change. 
-  // Wait, if sourcePath changes, this runs.
-  // Original handleSelectSource calls scan manually. 
-  // If we rely on useEffect, we can simplify handleSelectSource.
+  }, [filters, sourcePath]); 
   
   useEffect(() => {
     if (!images.length || currentIndex >= images.length) {
@@ -299,6 +301,27 @@ function App() {
     load();
   }, [currentIndex, images, sourcePath]);
 
+  const handleUndo = async () => {
+    if (history.length === 0) return;
+
+    const lastAction = history[history.length - 1];
+    let res;
+
+    if (lastAction.type === 'move') {
+      res = await callApi('move_image', lastAction.filename, lastAction.to, lastAction.from);
+    } else if (lastAction.type === 'delete') {
+      res = await callApi('restore_image', lastAction.filename, lastAction.from);
+    }
+
+    if (res && res.success) {
+        setHistory(prev => prev.slice(0, -1));
+        const newImages = [lastAction.filename, ...images];
+        setImages(newImages);
+        setCurrentIndex(0);
+    } else {
+        alert("Undo failed: " + (res?.error || "Unknown error"));
+    }
+  };
 
   const handleSelectSource = async () => {
     const path = await callApi('select_folder');
@@ -334,6 +357,7 @@ function App() {
     const res = await callApi('move_image', filename, sourcePath, destPath);
     
     if (res && res.success) {
+      setHistory(prev => [...prev, { type: 'move', filename, from: sourcePath, to: destPath }]);
       const newImages = [...images];
       newImages.splice(currentIndex, 1);
       setImages(newImages);
@@ -358,6 +382,7 @@ function App() {
     const res = await callApi('delete_image', filename, sourcePath);
     
     if (res && res.success) {
+      setHistory(prev => [...prev, { type: 'delete', filename, from: sourcePath }]);
       const newImages = [...images];
       newImages.splice(currentIndex, 1);
       setImages(newImages);
@@ -379,6 +404,12 @@ function App() {
 
   useEffect(() => {
     const handleKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
       // Ignore if no images
       if (!images.length) return;
 
@@ -393,7 +424,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [destinations, currentIndex, images]); // Removed handleDelete from dependencies
+  }, [destinations, currentIndex, images, history]);
 
 
   // --- Render ---
@@ -468,9 +499,22 @@ function App() {
                 <span className="text-sm font-medium">{images.length} <span className="text-gray-500">pending</span></span>
              </div>
 
+             {/* Undo Button */}
+             <Button 
+                onClick={handleUndo} 
+                disabled={history.length === 0}
+                className="!px-3 !py-1 h-9 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border-blue-500/20 disabled:opacity-30 disabled:hover:bg-transparent disabled:text-gray-600 disabled:border-transparent"
+                title="Undo (Ctrl+Z)"
+                variant="secondary"
+             >
+                 <div className="flex items-center gap-1">
+                    <span className="text-xs uppercase font-bold">Undo</span>
+                 </div>
+             </Button>
+
              {/* Delete Button */}
              <Button 
-                onClick={handleDeleteClick} 
+                onClick={handleDeleteClick}  
                 className="!px-3 !py-1 h-9 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
                 title="Delete Image (Del)"
                 variant="secondary"

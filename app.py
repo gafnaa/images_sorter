@@ -4,8 +4,9 @@ import base64
 import webview
 from threading import Thread
 import sys
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ExifTags
 import io
+import datetime
 
 # Define the API class that will be exposed to JavaScript
 class Api:
@@ -94,6 +95,60 @@ class Api:
             print(f"API: Error loading image {path}: {e}")
             return None
 
+    def get_image_metadata(self, filename, src_folder):
+        """Get resolution, size, and EXIF data."""
+        try:
+            path = os.path.join(src_folder, filename)
+            if not os.path.exists(path):
+                return {}
+            
+            # File size
+            stats = os.stat(path)
+            size_mb = stats.st_size / (1024 * 1024)
+            
+            width = 0
+            height = 0
+            img_format = "Unknown"
+            exif_data = {}
+
+            try:
+                with Image.open(path) as img:
+                    width, height = img.size
+                    img_format = img.format or "Unknown"
+                    
+                    if hasattr(img, '_getexif') and img._getexif():
+                        exif = img._getexif()
+                        for tag, value in exif.items():
+                            decoded = ExifTags.TAGS.get(tag, tag)
+                            if decoded in ['DateTimeOriginal', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
+                                exif_data[decoded] = str(value)
+            except Exception as read_err:
+                print(f"Error reading metadata from image: {read_err}") 
+                # Proceed with basic file stats
+
+            # Format specific values
+            iso = exif_data.get('ISOSpeedRatings', '')
+            
+            aperture = ""
+            if 'FNumber' in exif_data:
+                try:
+                    aperture = f"f/{exif_data['FNumber']}"
+                except: pass
+
+            return {
+                "filename": filename,
+                "resolution": f"{width} x {height}",
+                "size": f"{size_mb:.2f} MB",
+                "format": img_format,
+                "date": exif_data.get('DateTimeOriginal', 'Unknown'),
+                "camera": f"{exif_data.get('Make', '')} {exif_data.get('Model', '')}".strip() or "Unknown",
+                "iso": iso,
+                "aperture": aperture,
+                "shutter": exif_data.get('ExposureTime', '')
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
     def move_image(self, filename, src_folder, dest_folder):
         """Move an image from src to dest."""
         try:
@@ -110,14 +165,35 @@ class Api:
             return {"success": False, "error": str(e)}
 
     def delete_image(self, filename, src_folder):
-        """Delete an image file permanently."""
+        """Soft delete: Move image to a .trash folder inside src_folder."""
         try:
-            file_path = os.path.join(src_folder, filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            trash_path = os.path.join(src_folder, '.trash')
+            if not os.path.exists(trash_path):
+                os.makedirs(trash_path)
+            
+            src_path = os.path.join(src_folder, filename)
+            dest_path = os.path.join(trash_path, filename)
+            
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
                 return {"success": True}
             else:
                 return {"success": False, "error": "File not found"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def restore_image(self, filename, src_folder):
+        """Restore image from .trash folder."""
+        try:
+            trash_path = os.path.join(src_folder, '.trash')
+            src_path = os.path.join(trash_path, filename) # It is now in trash
+            dest_path = os.path.join(src_folder, filename) # Moving back to original source
+            
+            if os.path.exists(src_path):
+                shutil.move(src_path, dest_path)
+                return {"success": True}
+            else:
+                return {"success": False, "error": "File in trash not found"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

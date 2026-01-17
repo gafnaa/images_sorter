@@ -204,10 +204,25 @@ def start_app():
     # specific logic can be added. for now let's assume dev mode usually ports 5173
     # OR we point to the built index.html
     
+    # Function to get the correct path for resources
+    def resource_path(relative_path):
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base_path, relative_path)
+
     # Check if 'dist' exists, if so use it, else try localhost
     url = "http://localhost:5173"
-    if os.path.exists(os.path.join(os.path.dirname(__file__), "ui/dist/index.html")):
-        url = os.path.join(os.path.dirname(__file__), "ui/dist/index.html")
+    
+    # Check for the built UI file
+    # In PyInstaller, we will likely bundle it into 'ui/dist' folder inside the executable
+    ui_path = resource_path(os.path.join("ui", "dist", "index.html"))
+    
+    if os.path.exists(ui_path):
+        url = ui_path
 
     # If an argument is passed, use it as URL (e.g. for dev)
     if len(sys.argv) > 1:

@@ -40,7 +40,7 @@ const MetadataPanel = ({ data, onClose }) => {
       initial={{ x: 300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 300, opacity: 0 }}
-      className="absolute top-16 right-0 bottom-48 w-64 bg-black/40 backdrop-blur-xl border-l border-white/10 p-6 z-20 overflow-y-auto"
+      className="absolute top-16 right-0 bottom-20 w-64 bg-black/40 backdrop-blur-xl border-l border-white/10 p-6 z-20 overflow-y-auto"
     >
         <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-lg flex items-center gap-2">

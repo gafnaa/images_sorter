@@ -276,13 +276,14 @@ class Api:
             print(f"API: Error loading asset {path}: {e}")
             return None
 
-    def get_image_metadata(self, filename, src_folder):
+    def get_image_metadata(self, path):
         """Get resolution, size, and EXIF data."""
         try:
-            path = os.path.join(src_folder, filename)
+            # path is now the full path passed from frontend
             if not os.path.exists(path):
                 return {}
             
+            filename = os.path.basename(path)
             # File size
             stats = os.stat(path)
             size_mb = stats.st_size / (1024 * 1024)

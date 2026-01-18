@@ -7,6 +7,31 @@ import sys
 from PIL import Image, ImageOps, ExifTags
 import io
 import datetime
+from flask import Flask, send_file, request, Response
+from flask_cors import CORS
+
+# --- Flask Server for Streaming ---
+server = Flask(__name__)
+CORS(server)
+PORT = 23456
+
+@server.route('/video')
+def stream_video():
+    path = request.args.get('path')
+    if not path:
+        return "No path provided", 400
+    try:
+        # Basic security check? 
+        return send_file(path)
+    except Exception as e:
+        return str(e), 500
+
+def start_server():
+    server.run(host='127.0.0.1', port=PORT, threaded=True)
+
+# Start server in background thread
+t = Thread(target=start_server, daemon=True)
+t.start()
 
 # Define the API class that will be exposed to JavaScript
 class Api:
@@ -81,12 +106,11 @@ class Api:
         is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
         if is_video and not is_thumbnail:
-            # Return special format for frontend to recognize it's a video source
-            # Convert to file URI or absolute path. 
-            # Note: pywebview might block local file access in dev mode (localhost origin),
-            # but usually allows it in prod. 
-            # We return a specific prefix to let frontend know.
-            return f"video|{path}"
+            # Return Streaming URL via Flask
+            import urllib.parse
+            quoted_path = urllib.parse.quote(path) # Quote safely
+            # Note: 127.0.0.1 is safer than localhost for some windows setups
+            return f"video|http://127.0.0.1:{PORT}/video?path={quoted_path}"
 
         try:
             if is_video and is_thumbnail:
@@ -280,6 +304,14 @@ def start_app():
     # If an argument is passed, use it as URL (e.g. for dev)
     if len(sys.argv) > 1:
         url = sys.argv[1]
+
+    # Enable File Access (Attempt to fix video playback)
+    # Note: These flags depend on the underlying browser engine (CEF/WebView2/etc)
+    try:
+        webview.settings['ALLOW_FILE_ACCESS_FROM_FILES'] = True
+        webview.settings['ALLOW_UNIVERSAL_ACCESS_FROM_FILES'] = True
+    except Exception:
+        pass # Settings might not exist in some versions
 
     window = webview.create_window(
         'Image Sorter Pro', 

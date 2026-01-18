@@ -1040,9 +1040,21 @@ function App() {
                           {currentImageSrc.startsWith("video|") ? (
                             <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
                               <video
-                                src={`file:///${currentImageSrc.substring(6).replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/")}`}
+                                src={currentImageSrc.substring(6)}
+                                type={
+                                  images[currentIndex].endsWith(".mp4")
+                                    ? "video/mp4"
+                                    : images[currentIndex].endsWith(".webm")
+                                      ? "video/webm"
+                                      : images[currentIndex].endsWith(".mov")
+                                        ? "video/mp4"
+                                        : undefined
+                                }
                                 controls
                                 autoPlay
+                                muted
+                                playsInline
+                                preload="auto"
                                 className="max-w-full max-h-full rounded-lg shadow-2xl"
                                 onError={(e) =>
                                   console.error("Video Error:", e)

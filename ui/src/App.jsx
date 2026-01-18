@@ -257,70 +257,6 @@ const callApi = async (method, ...args) => {
 
 // ... (Button, IconButton, DestinationCard components remain unchanged) ...
 
-const FilterPopup = ({ filters, onToggle, onClose }) => {
-  const options = [
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
-    "webp",
-    "arw",
-    "cr2",
-    "cr3",
-    "nef",
-    "raf",
-    "dng",
-    "orf",
-    "rw2",
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="absolute top-16 right-6 w-48 bg-surface border border-white/10 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl"
-    >
-      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
-        <span className="text-sm font-semibold">File Types</span>
-        <button onClick={onClose}>
-          <X size={14} className="text-gray-400 hover:text-white" />
-        </button>
-      </div>
-      <div className="space-y-2">
-        {options.map((ext) => (
-          <label
-            key={ext}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <div
-              className={clsx(
-                "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                filters.includes(ext)
-                  ? "bg-blue-500 border-blue-500"
-                  : "border-gray-500 group-hover:border-gray-400",
-              )}
-            >
-              {filters.includes(ext) && (
-                <CheckCircle size={10} className="text-white" />
-              )}
-            </div>
-            <input
-              type="checkbox"
-              className="hidden"
-              checked={filters.includes(ext)}
-              onChange={() => onToggle(ext)}
-            />
-            <span className="text-sm text-gray-300 group-hover:text-white uppercase">
-              {ext}
-            </span>
-          </label>
-        ))}
-      </div>
-    </motion.div>
-  );
-};
-
 const Button = ({
   children,
   onClick,
@@ -414,6 +350,69 @@ const DestinationCard = ({ path, index, onClick, onRemove }) => {
       >
         <X size={12} />
       </button>
+    </motion.div>
+  );
+};
+
+const FilterPopup = ({ filters, onToggle, onClose }) => {
+  // Grouped filters for better UX
+  const groups = [
+    { name: "Common", exts: ["jpg", "jpeg", "png", "webp", "gif"] },
+    {
+      name: "RAW",
+      exts: ["arw", "cr2", "cr3", "nef", "raf", "dng", "orf", "rw2"],
+    },
+    { name: "Video", exts: ["mp4", "mov", "avi", "mkv", "webm"] },
+  ];
+
+  // Flatten all extensions for "Toggle All" logic
+  const allExts = groups.flatMap((g) => g.exts);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="absolute top-12 right-0 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl p-4 w-72 z-50 backdrop-blur-xl"
+    >
+      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+        <span className="text-sm font-bold text-gray-300">File Filters</span>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-white/10 rounded-md text-gray-400 hover:text-white"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+        {groups.map((group) => (
+          <div key={group.name} className="space-y-2">
+            <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider pl-1 flex items-center gap-2">
+              {group.name === "Video" && <Video size={12} />}
+              {group.name === "RAW" && <Settings size={12} />}
+              {group.name === "Common" && <ImageIcon size={12} />}
+              {group.name}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {group.exts.map((ext) => (
+                <button
+                  key={ext}
+                  onClick={() => onToggle(ext)}
+                  className={clsx(
+                    "px-2 py-1.5 text-[10px] font-mono rounded-md border transition-all text-center uppercase truncate",
+                    filters.includes(ext)
+                      ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_-3px_rgba(99,102,241,0.3)]"
+                      : "bg-white/5 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-400",
+                  )}
+                >
+                  .{ext}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </motion.div>
   );
 };
@@ -968,17 +967,33 @@ function App() {
                       ) : currentImageSrc ? (
                         <>
                           {/* Blurred Background for Fill */}
-                          <div
-                            className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
-                            style={{
-                              backgroundImage: `url(${currentImageSrc})`,
-                            }}
-                          />
-                          <ZoomableImage
-                            ref={imageRef}
-                            src={currentImageSrc}
-                            alt=""
-                          />
+                          {/* Only show blur for images, not videos (since we don't have a poster ready) */}
+                          {!currentImageSrc.startsWith("video|") && (
+                            <div
+                              className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
+                              style={{
+                                backgroundImage: `url(${currentImageSrc})`,
+                              }}
+                            />
+                          )}
+
+                          {currentImageSrc.startsWith("video|") ? (
+                            <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
+                              <video
+                                src={currentImageSrc.substring(6)}
+                                controls
+                                autoPlay
+                                loop
+                                className="max-w-full max-h-full rounded-lg shadow-2xl"
+                              />
+                            </div>
+                          ) : (
+                            <ZoomableImage
+                              ref={imageRef}
+                              src={currentImageSrc}
+                              alt=""
+                            />
+                          )}
                         </>
                       ) : (
                         <div className="text-gray-600 flex flex-col items-center">

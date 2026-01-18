@@ -41,14 +41,19 @@ class Api:
             return None
 
     def scan_images(self, folder_path, allowed_extensions=None):
-        """Return a list of image filenames in the folder."""
+        """Return a list of image and video filenames in the folder."""
         if not folder_path or not os.path.exists(folder_path):
             return []
         
         images = []
         # Default extensions if none provided
         if not allowed_extensions:
-            valid_exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".arw", ".cr2", ".cr3", ".nef", ".raf", ".dng", ".orf", ".rw2"}
+            # Added video extensions
+            valid_exts = {
+                ".png", ".jpg", ".jpeg", ".gif", ".webp", 
+                ".arw", ".cr2", ".cr3", ".nef", ".raf", ".dng", ".orf", ".rw2",
+                ".mp4", ".mov", ".avi", ".mkv", ".webm"
+            }
         else:
             # Ensure extensions start with dot and are lowercase
             valid_exts = {f".{ext.lower().lstrip('.')}" for ext in allowed_extensions}
@@ -63,36 +68,73 @@ class Api:
         return images
 
     def load_image(self, path, is_thumbnail=False):
-        """Read an image file, resize if needed, and return as base64 string."""
+        """
+        Read an image file, resize if needed, and return as base64 string.
+        For videos:
+         - if is_thumbnail: return a generated placeholder image.
+         - else: return the absolute file path prefixed with 'video|' for the frontend to handle.
+        """
         if not path or not os.path.exists(path):
             return None
         
+        ext = os.path.splitext(path)[1].lower()
+        is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+
+        if is_video and not is_thumbnail:
+            # Return special format for frontend to recognize it's a video source
+            # Convert to file URI or absolute path. 
+            # Note: pywebview might block local file access in dev mode (localhost origin),
+            # but usually allows it in prod. 
+            # We return a specific prefix to let frontend know.
+            return f"video|{path}"
+
         try:
-            # Use PIL to load and resize
-            with Image.open(path) as img:
-                # Handle orientation metadata
-                img = ImageOps.exif_transpose(img)
+            if is_video and is_thumbnail:
+                # Generate a placeholder for video thumbnail using PIL
+                # We create a grey background with a "Play" symbol or text
+                img = Image.new('RGB', (150, 150), color='#1e1e1e')
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(img)
                 
-                # Convert to RGB to avoid alpha channel issues with JPEG
-                if img.mode in ('RGBA', 'P'):
-                    img = img.convert('RGB')
+                # Draw a simple play triangle
+                # Coordinates for a triangle
+                w, h = 150, 150
+                colors = (255, 255, 255) # White
                 
-                # Resize logic
-                if is_thumbnail:
-                    img.thumbnail((150, 150)) # Efficient resize
-                else:
-                    # Limit max resolution for preview to save RAM (e.g., 2K max)
-                    # Most screens are 1080p or 1440p, full 4K/20MB file is wasteful
-                    img.thumbnail((1920, 1080))
+                # Triangle centered
+                p1 = (w // 2 - 15, h // 2 - 25)
+                p2 = (w // 2 - 15, h // 2 + 25)
+                p3 = (w // 2 + 25, h // 2)
+                draw.polygon([p1, p2, p3], fill='white')
                 
-                # Save to buffer
-                buffer = io.BytesIO()
-                img.save(buffer, format="JPEG", quality=80 if is_thumbnail else 90)
-                b64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
-                return f"data:image/jpeg;base64,{b64_data}"
+                # Add a border
+                draw.rectangle([0,0, w-1, h-1], outline='#333', width=1)
+                
+            else:
+                # Use PIL to load and resize image
+                with Image.open(path) as img:
+                    # Handle orientation metadata
+                    img = ImageOps.exif_transpose(img)
+                    
+                    # Convert to RGB to avoid alpha channel issues with JPEG
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    
+                    # Resize logic
+                    if is_thumbnail:
+                        img.thumbnail((150, 150)) # Efficient resize
+                    else:
+                        img.thumbnail((1920, 1080))
+            
+            # Save to buffer (common for both image and video thumbnail)
+            buffer = io.BytesIO()
+            # If it was a PIL image (either loaded or generated)
+            img.save(buffer, format="JPEG", quality=80 if is_thumbnail else 90)
+            b64_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/jpeg;base64,{b64_data}"
                 
         except Exception as e:
-            print(f"API: Error loading image {path}: {e}")
+            print(f"API: Error loading asset {path}: {e}")
             return None
 
     def get_image_metadata(self, filename, src_folder):

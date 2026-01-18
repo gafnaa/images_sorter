@@ -30,6 +30,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Video,
+  Play,
 } from "lucide-react";
 import clsx from "clsx";
 // ...

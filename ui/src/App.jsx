@@ -810,10 +810,10 @@ function App() {
 
           <div>
             <h1 className="text-5xl font-bold tracking-tight mb-4">
-              Image Sorter <span className="text-blue-500">Pro</span>
+              Video and Image <span className="text-blue-500">Sorter</span>
             </h1>
             <p className="text-xl text-gray-400 font-light">
-              Organize your chaos. The fastest way to sort thousands of images.
+              Organize your chaos. The fastest way to sort thousands of media.
             </p>
           </div>
 

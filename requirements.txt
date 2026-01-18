@@ -1,2 +1,5 @@
 pywebview
 Pillow
+flask
+flask-cors
+opencv-python

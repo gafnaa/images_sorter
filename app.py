@@ -430,7 +430,7 @@ def start_app():
         pass # Settings might not exist in some versions
 
     window = webview.create_window(
-        'Image Sorter Pro', 
+        'MediaSort', 
         url, 
         js_api=api,
         width=1000,

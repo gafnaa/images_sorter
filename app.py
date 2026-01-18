@@ -114,25 +114,62 @@ class Api:
 
         try:
             if is_video and is_thumbnail:
-                # Generate a placeholder for video thumbnail using PIL
-                # We create a grey background with a "Play" symbol or text
-                img = Image.new('RGB', (150, 150), color='#1e1e1e')
-                from PIL import ImageDraw
-                draw = ImageDraw.Draw(img)
+                img = None
+                try:
+                    # Try to generate real thumbnail using OpenCV
+                    import cv2
+                    # print(f"DEBUG: Generating thumb for {path}")
+                    cap = cv2.VideoCapture(path)
+                    if cap.isOpened():
+                        # Try to read a frame from the middle or at least 1 second in (approx 30 frames)
+                        # to avoid black fading in
+                        try:
+                            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                        except:
+                            total_frames = 0
+                            
+                        if total_frames > 60:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 30)
+                        else:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            
+                        ret, frame = cap.read()
+                        if ret:
+                            # Convert BGR (OpenCV) to RGB (PIL)
+                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            img = Image.fromarray(frame_rgb)
+                        else:
+                            print(f"Warning: Could not read frame from {path}")
+                        
+                        cap.release()
+                    else:
+                        print(f"Warning: Could not open video file for thumbnail: {path}")
+                except ImportError as e:
+                    print(f"OpenCV Import Error: {e}")
+                except Exception as e:
+                    print(f"Error generating video thumbnail: {e}")
+
+                if img is None:
+                    # Fallback: Generate a placeholder for video thumbnail using PIL
+                    # Lighter background to be visible
+                    img = Image.new('RGB', (150, 150), color='#334155') 
+                    from PIL import ImageDraw
+                    draw = ImageDraw.Draw(img)
+                    
+                    # Draw film strip holes on left and right
+                    for y in range(10, 150, 20):
+                        draw.rectangle([5, y, 15, y+10], fill='white')
+                        draw.rectangle([135, y, 145, y+10], fill='white')
+                    
+                    # Draw a text-like rect in center
+                    draw.rectangle([40, 60, 110, 90], outline='white', width=2)
+                    # Maybe just a "V" shape
+                    draw.line([50, 65, 75, 85], fill='white', width=3)
+                    draw.line([75, 85, 100, 65], fill='white', width=3)
                 
-                # Draw a simple play triangle
-                # Coordinates for a triangle
-                w, h = 150, 150
-                colors = (255, 255, 255) # White
-                
-                # Triangle centered
-                p1 = (w // 2 - 15, h // 2 - 25)
-                p2 = (w // 2 - 15, h // 2 + 25)
-                p3 = (w // 2 + 25, h // 2)
-                draw.polygon([p1, p2, p3], fill='white')
-                
-                # Add a border
-                draw.rectangle([0,0, w-1, h-1], outline='#333', width=1)
+                # Ensure resize happens for both cases
+                img.thumbnail((150, 150))
+
                 
             else:
                 # Use PIL to load and resize image

@@ -9,6 +9,7 @@ import io
 import datetime
 from flask import Flask, send_file, request, Response
 from flask_cors import CORS
+from functools import lru_cache
 
 # --- Flask Server for Streaming ---
 server = Flask(__name__)
@@ -16,7 +17,8 @@ CORS(server)
 PORT = 23456
 
 @server.route('/video')
-def stream_video():
+@server.route('/view')
+def serve_file():
     path = request.args.get('path')
     if not path:
         return "No path provided", 400
@@ -25,6 +27,76 @@ def stream_video():
         return send_file(path)
     except Exception as e:
         return str(e), 500
+
+@lru_cache(maxsize=1000)
+def get_thumbnail_bytes(path):
+    """Generate and cache thumbnail bytes."""
+    if not path or not os.path.exists(path):
+        return None
+    
+    img = None
+    ext = os.path.splitext(path)[1].lower()
+    is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    
+    try:
+        if is_video:
+            # Video Thumbnail Logic
+            try:
+                import cv2
+                cap = cv2.VideoCapture(path)
+                if cap.isOpened():
+                    try:
+                        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    except: total = 0
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 30 if total > 60 else 0)
+                    ret, frame = cap.read()
+                    if ret:
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        img = Image.fromarray(frame_rgb)
+                    cap.release()
+            except: pass
+            
+            if img is None:
+                # Fallback video placeholder
+                img = Image.new('RGB', (150, 150), color='#334155') 
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(img)
+                for y in range(10, 150, 20):
+                    draw.rectangle([5, y, 15, y+10], fill='white')
+                    draw.rectangle([135, y, 145, y+10], fill='white')
+                draw.rectangle([40, 60, 110, 90], outline='white', width=2)
+                draw.line([50, 65, 75, 85], fill='white', width=3)
+                draw.line([75, 85, 100, 65], fill='white', width=3)
+        else:
+            # Image Thumbnail Logic
+            with Image.open(path) as i:
+                i = ImageOps.exif_transpose(i)
+                if i.mode in ('RGBA', 'P'): 
+                    i = i.convert('RGB')
+                i.thumbnail((150, 150))
+                img = i.copy()
+                
+        if img:
+            # Ensure max size (already done for image, do for video)
+            img.thumbnail((150, 150))
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return buffer.getvalue()
+            
+    except Exception as e:
+        print(f"Thumb Gen Error {path}: {e}")
+        
+    return None
+
+@server.route('/thumbnail')
+def serve_thumbnail():
+    path = request.args.get('path')
+    if not path: return "Missing path", 400
+    
+    data = get_thumbnail_bytes(path)
+    if data:
+        return send_file(io.BytesIO(data), mimetype='image/jpeg')
+    return "Error", 500
 
 def start_server():
     server.run(host='127.0.0.1', port=PORT, threaded=True)
@@ -84,12 +156,18 @@ class Api:
             valid_exts = {f".{ext.lower().lstrip('.')}" for ext in allowed_extensions}
             
         try:
-            for f in os.listdir(folder_path):
-                ext = os.path.splitext(f)[1].lower()
-                if ext in valid_exts:
-                    images.append(f)
+            # Use scandir for better performance
+            with os.scandir(folder_path) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        ext = os.path.splitext(entry.name)[1].lower()
+                        if ext in valid_exts:
+                            images.append(entry.name)
         except Exception as e:
             print(f"Error scanning folder: {e}")
+        
+        # Sort explicitly since scandir is not ordered
+        images.sort()
         return images
 
     def load_image(self, path, is_thumbnail=False):

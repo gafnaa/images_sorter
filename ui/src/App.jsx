@@ -420,24 +420,13 @@ const FilterPopup = ({ filters, onToggle, onClose }) => {
 // --- THUMBNAIL COMPONENT ---
 
 const Thumbnail = ({ filename, sourcePath, current, onClick }) => {
-  const [src, setSrc] = useState(null);
-  const isActive = current; // Fix prop name mismatch
+  const isActive = current;
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      // Simple path join
-      const sep = sourcePath.includes("\\") ? "\\" : "/";
-      const fullPath = `${sourcePath}${sep}${filename}`;
-      // Pass true for is_thumbnail to get optimized small image
-      const b64 = await callApi("load_image", fullPath, true);
-      if (mounted && b64) setSrc(b64);
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [filename, sourcePath]);
+  const sep = sourcePath.includes("\\") ? "\\" : "/";
+  // Double encode if needed? No, Flask request.args handles URL decoding once.
+  // encodeURIComponent creates valid generic URL.
+  const fullPath = `${sourcePath}${sep}${filename}`;
+  const src = `http://127.0.0.1:23456/thumbnail?path=${encodeURIComponent(fullPath)}`;
 
   return (
     <div
@@ -449,13 +438,16 @@ const Thumbnail = ({ filename, sourcePath, current, onClick }) => {
           : "border-white/10 hover:border-white/30 opacity-60 hover:opacity-100",
       )}
     >
-      {src ? (
-        <img src={src} className="w-full h-full object-cover" alt={filename} />
-      ) : (
-        <div className="w-full h-full bg-white/5 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-        </div>
-      )}
+      <img
+        src={src}
+        className="w-full h-full object-cover"
+        alt={filename}
+        loading="lazy"
+        onError={(e) => {
+          e.target.style.display = "none"; // Hide if fails
+          // e.target.parentElement.classList.add('bg-red-900'); // Optional visual indicator
+        }}
+      />
       {isActive && (
         <div className="absolute inset-0 ring-2 ring-blue-500 rounded-lg" />
       )}
@@ -618,30 +610,42 @@ function App() {
   }, [filters, sourcePath]);
 
   useEffect(() => {
+    loadRef.current = currentIndex; // Update ref
+
     if (!images.length || currentIndex >= images.length) {
       setCurrentImageSrc(null);
+      setMetadata(null);
       return;
     }
 
     const load = async () => {
       setLoadingImage(true);
       const filename = images[currentIndex];
-      // Handling path separators somewhat naively but functional for Windows
       const sep = sourcePath.includes("\\") ? "\\" : "/";
       const fullPath = `${sourcePath}${sep}${filename}`;
 
-      const b64 = await callApi("load_image", fullPath);
-      // Prevent race condition if index changed fast
+      // OPTIMIZATION: Use direct HTTP URL instead of Base64 via Bridge
+      // This is much faster and lighter on memory
+      const url = `http://127.0.0.1:23456/view?path=${encodeURIComponent(fullPath)}`;
+
+      const ext = filename.split(".").pop().toLowerCase();
+      const isVideo = ["mp4", "mov", "avi", "mkv", "webm"].includes(ext);
+
+      if (isVideo) {
+        // Keep video| prefix for render logic
+        setCurrentImageSrc(`video|${url}`);
+      } else {
+        setCurrentImageSrc(url);
+      }
+
+      setLoadingImage(false);
+
+      // Fetch metadata (keep as API call since it uses Pillow/Exif)
+      const meta = await callApi("get_image_metadata", fullPath);
       if (currentIndex === loadRef.current) {
-        setCurrentImageSrc(b64);
-        setLoadingImage(false);
-        // Fetch metadata
-        const meta = await callApi("get_image_metadata", filename, sourcePath);
-        if (currentIndex === loadRef.current) setMetadata(meta);
+        setMetadata(meta);
       }
     };
-
-    loadRef.current = currentIndex;
     load();
   }, [currentIndex, images, sourcePath]);
 

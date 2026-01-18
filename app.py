@@ -153,18 +153,29 @@ class Api:
             img_format = "Unknown"
             exif_data = {}
 
-            try:
-                with Image.open(path) as img:
-                    width, height = img.size
-                    img_format = img.format or "Unknown"
-                    
-                    if hasattr(img, '_getexif') and img._getexif():
-                        exif = img._getexif()
-                        for tag, value in exif.items():
-                            decoded = ExifTags.TAGS.get(tag, tag)
-                            if decoded in ['DateTimeOriginal', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
-                                exif_data[decoded] = str(value)
-            except Exception as read_err:
+            # Check if video
+            ext = os.path.splitext(filename)[1].lower()
+            is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+            
+            if is_video:
+                img_format = f"Video ({ext.strip('.')})"
+                # For now getting video resolution is complex without ffmpeg/opencv dependency
+                # which we want to avoid if possible for simplicity or handle gracefully
+                # We can just leave width/height 0 or generic
+            else:
+                try:
+                    with Image.open(path) as img:
+                        width, height = img.size
+                        img_format = img.format or "Unknown"
+                        
+                        if hasattr(img, '_getexif') and img._getexif():
+                            exif = img._getexif()
+                            for tag, value in exif.items():
+                                decoded = ExifTags.TAGS.get(tag, tag)
+                                if decoded in ['DateTimeOriginal', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
+                                    exif_data[decoded] = str(value)
+                except Exception as read_err:
+                    print(f"Error reading metadata from image: {read_err}")
                 print(f"Error reading metadata from image: {read_err}") 
                 # Proceed with basic file stats
 

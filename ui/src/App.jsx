@@ -980,7 +980,7 @@ function App() {
                           {currentImageSrc.startsWith("video|") ? (
                             <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
                               <video
-                                src={currentImageSrc.substring(6)}
+                                src={`file:///${currentImageSrc.substring(6).replace(/\\/g, "/")}`}
                                 controls
                                 autoPlay
                                 loop

@@ -4,7 +4,6 @@ import base64
 import webview
 from threading import Thread
 import sys
-from PIL import Image, ImageOps, ExifTags
 import io
 import datetime
 from flask import Flask, send_file, request, Response
@@ -39,6 +38,7 @@ def get_thumbnail_bytes(path):
     is_video = ext in {".mp4", ".mov", ".avi", ".mkv", ".webm"}
     
     try:
+        from PIL import Image, ImageOps
         if is_video:
             # Video Thumbnail Logic
             try:
@@ -251,6 +251,7 @@ class Api:
                 
             else:
                 # Use PIL to load and resize image
+                from PIL import Image, ImageOps
                 with Image.open(path) as img:
                     # Handle orientation metadata
                     img = ImageOps.exif_transpose(img)
@@ -304,6 +305,7 @@ class Api:
                 # We can just leave width/height 0 or generic
             else:
                 try:
+                    from PIL import Image, ExifTags
                     with Image.open(path) as img:
                         width, height = img.size
                         img_format = img.format or "Unknown"

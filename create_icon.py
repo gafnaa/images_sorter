@@ -1,20 +1,22 @@
-from PIL import Image, ImageDraw
+from PIL import Image
+import cairosvg
+import io
 
-def create_icon():
-    # Create a 256x256 image
-    size = (256, 256)
-    img = Image.new('RGBA', size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+def svg_to_ico(svg_path="logo.svg", ico_path="icon.ico"):
+    # Render SVG to PNG bytes
+    png_bytes = cairosvg.svg2png(url=svg_path, output_width=256, output_height=256)
 
-    # Draw rounded square (Folder)
-    # Front
-    d.rounded_rectangle([(20, 60), (236, 236)], radius=40, fill="#3b82f6", outline="#1e40af", width=2)
-    
-    # "Image" representation (Sun)
-    d.ellipse([(100, 100), (156, 156)], fill="#fbbf24")
-    
-    img.save('icon.ico', format='ICO', sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)])
-    print("icon.ico created.")
+    # Load PNG into PIL Image
+    img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+
+    # Save as ICO with multiple sizes
+    img.save(
+        ico_path,
+        format="ICO",
+        sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
+    )
+
+    print(f"{ico_path} created successfully from {svg_path}")
 
 if __name__ == "__main__":
-    create_icon()
+    svg_to_ico("logo.svg", "icon.ico")

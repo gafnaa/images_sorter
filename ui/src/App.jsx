@@ -30,6 +30,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Video,
+  Play,
 } from "lucide-react";
 import clsx from "clsx";
 // ...
@@ -255,70 +257,6 @@ const callApi = async (method, ...args) => {
 
 // ... (Button, IconButton, DestinationCard components remain unchanged) ...
 
-const FilterPopup = ({ filters, onToggle, onClose }) => {
-  const options = [
-    "png",
-    "jpg",
-    "jpeg",
-    "gif",
-    "webp",
-    "arw",
-    "cr2",
-    "cr3",
-    "nef",
-    "raf",
-    "dng",
-    "orf",
-    "rw2",
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="absolute top-16 right-6 w-48 bg-surface border border-white/10 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl"
-    >
-      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
-        <span className="text-sm font-semibold">File Types</span>
-        <button onClick={onClose}>
-          <X size={14} className="text-gray-400 hover:text-white" />
-        </button>
-      </div>
-      <div className="space-y-2">
-        {options.map((ext) => (
-          <label
-            key={ext}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <div
-              className={clsx(
-                "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                filters.includes(ext)
-                  ? "bg-blue-500 border-blue-500"
-                  : "border-gray-500 group-hover:border-gray-400",
-              )}
-            >
-              {filters.includes(ext) && (
-                <CheckCircle size={10} className="text-white" />
-              )}
-            </div>
-            <input
-              type="checkbox"
-              className="hidden"
-              checked={filters.includes(ext)}
-              onChange={() => onToggle(ext)}
-            />
-            <span className="text-sm text-gray-300 group-hover:text-white uppercase">
-              {ext}
-            </span>
-          </label>
-        ))}
-      </div>
-    </motion.div>
-  );
-};
-
 const Button = ({
   children,
   onClick,
@@ -416,26 +354,79 @@ const DestinationCard = ({ path, index, onClick, onRemove }) => {
   );
 };
 
+const FilterPopup = ({ filters, onToggle, onClose }) => {
+  // Grouped filters for better UX
+  const groups = [
+    { name: "Common", exts: ["jpg", "jpeg", "png", "webp", "gif"] },
+    {
+      name: "RAW",
+      exts: ["arw", "cr2", "cr3", "nef", "raf", "dng", "orf", "rw2"],
+    },
+    { name: "Video", exts: ["mp4", "mov", "avi", "mkv", "webm"] },
+  ];
+
+  // Flatten all extensions for "Toggle All" logic
+  const allExts = groups.flatMap((g) => g.exts);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="absolute top-12 right-0 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl p-4 w-72 z-50 backdrop-blur-xl"
+    >
+      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+        <span className="text-sm font-bold text-gray-300">File Filters</span>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-white/10 rounded-md text-gray-400 hover:text-white"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+        {groups.map((group) => (
+          <div key={group.name} className="space-y-2">
+            <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider pl-1 flex items-center gap-2">
+              {group.name === "Video" && <Video size={12} />}
+              {group.name === "RAW" && <Settings size={12} />}
+              {group.name === "Common" && <ImageIcon size={12} />}
+              {group.name}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {group.exts.map((ext) => (
+                <button
+                  key={ext}
+                  onClick={() => onToggle(ext)}
+                  className={clsx(
+                    "px-2 py-1.5 text-[10px] font-mono rounded-md border transition-all text-center uppercase truncate",
+                    filters.includes(ext)
+                      ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300 shadow-[0_0_10px_-3px_rgba(99,102,241,0.3)]"
+                      : "bg-white/5 border-white/5 text-gray-500 hover:border-white/20 hover:text-gray-400",
+                  )}
+                >
+                  .{ext}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
 // --- THUMBNAIL COMPONENT ---
 
-const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
-  const [src, setSrc] = useState(null);
+const Thumbnail = ({ filename, sourcePath, current, onClick }) => {
+  const isActive = current;
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      // Simple path join
-      const sep = sourcePath.includes("\\") ? "\\" : "/";
-      const fullPath = `${sourcePath}${sep}${filename}`;
-      // Pass true for is_thumbnail to get optimized small image
-      const b64 = await callApi("load_image", fullPath, true);
-      if (mounted && b64) setSrc(b64);
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [filename, sourcePath]);
+  const sep = sourcePath.includes("\\") ? "\\" : "/";
+  // Double encode if needed? No, Flask request.args handles URL decoding once.
+  // encodeURIComponent creates valid generic URL.
+  const fullPath = `${sourcePath}${sep}${filename}`;
+  const src = `http://127.0.0.1:23456/thumbnail?path=${encodeURIComponent(fullPath)}`;
 
   return (
     <div
@@ -447,13 +438,16 @@ const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
           : "border-white/10 hover:border-white/30 opacity-60 hover:opacity-100",
       )}
     >
-      {src ? (
-        <img src={src} className="w-full h-full object-cover" alt={filename} />
-      ) : (
-        <div className="w-full h-full bg-white/5 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
-        </div>
-      )}
+      <img
+        src={src}
+        className="w-full h-full object-cover"
+        alt={filename}
+        loading="lazy"
+        onError={(e) => {
+          e.target.style.display = "none"; // Hide if fails
+          // e.target.parentElement.classList.add('bg-red-900'); // Optional visual indicator
+        }}
+      />
       {isActive && (
         <div className="absolute inset-0 ring-2 ring-blue-500 rounded-lg" />
       )}
@@ -497,9 +491,52 @@ const AlertPopup = ({ isOpen, onClose, onConfirm, title, description }) => {
   );
 };
 
-// --- MAIN APP ---
+// --- Error Boundary ---
+
+import { Component } from "react";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ error, errorInfo });
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen w-screen bg-black text-red-500 p-10 overflow-auto whitespace-pre-wrap font-mono relative z-50">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong.</h1>
+          <p className="mb-4">{this.state.error?.toString()}</p>
+          <div className="bg-gray-900 p-4 rounded text-sm text-gray-400">
+            {this.state.errorInfo?.componentStack}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Reload App
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// ... (App component)
 
 function App() {
+  // ... (State and hooks)
   const [sourcePath, setSourcePath] = useState(null);
   const [images, setImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -507,9 +544,6 @@ function App() {
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(false);
-
-  // Filter States
-  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([
     "png",
     "jpg",
@@ -524,19 +558,29 @@ function App() {
     "dng",
     "orf",
     "rw2",
+    "mp4",
+    "mov",
+    "avi",
+    "mkv",
+    "webm",
   ]);
-
-  // Delete Alert State
+  const [showFilters, setShowFilters] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-
-  // Undo History
   const [history, setHistory] = useState([]);
-
-  // Metadata State
   const [metadata, setMetadata] = useState(null);
   const [showMetadata, setShowMetadata] = useState(false);
 
   const imageRef = useRef(null);
+  const thumbnailRefs = useRef([]); // Ensure initialized
+
+  // ... (Logic methods)
+  // ...
+
+  // ... (Effects)
+
+  // ... (Key handlers)
+
+  // --- Render ---
 
   // --- Logic ---
 
@@ -566,30 +610,42 @@ function App() {
   }, [filters, sourcePath]);
 
   useEffect(() => {
+    loadRef.current = currentIndex; // Update ref
+
     if (!images.length || currentIndex >= images.length) {
       setCurrentImageSrc(null);
+      setMetadata(null);
       return;
     }
 
     const load = async () => {
       setLoadingImage(true);
       const filename = images[currentIndex];
-      // Handling path separators somewhat naively but functional for Windows
       const sep = sourcePath.includes("\\") ? "\\" : "/";
       const fullPath = `${sourcePath}${sep}${filename}`;
 
-      const b64 = await callApi("load_image", fullPath);
-      // Prevent race condition if index changed fast
+      // OPTIMIZATION: Use direct HTTP URL instead of Base64 via Bridge
+      // This is much faster and lighter on memory
+      const url = `http://127.0.0.1:23456/view?path=${encodeURIComponent(fullPath)}`;
+
+      const ext = filename.split(".").pop().toLowerCase();
+      const isVideo = ["mp4", "mov", "avi", "mkv", "webm"].includes(ext);
+
+      if (isVideo) {
+        // Keep video| prefix for render logic
+        setCurrentImageSrc(`video|${url}`);
+      } else {
+        setCurrentImageSrc(url);
+      }
+
+      setLoadingImage(false);
+
+      // Fetch metadata (keep as API call since it uses Pillow/Exif)
+      const meta = await callApi("get_image_metadata", fullPath);
       if (currentIndex === loadRef.current) {
-        setCurrentImageSrc(b64);
-        setLoadingImage(false);
-        // Fetch metadata
-        const meta = await callApi("get_image_metadata", filename, sourcePath);
-        if (currentIndex === loadRef.current) setMetadata(meta);
+        setMetadata(meta);
       }
     };
-
-    loadRef.current = currentIndex;
     load();
   }, [currentIndex, images, sourcePath]);
 
@@ -777,6 +833,15 @@ function App() {
 
   return (
     <div className="h-screen w-screen bg-[#050505] text-white flex flex-col overflow-hidden relative font-sans selection:bg-indigo-500/30">
+      {/* Global Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-indigo-400 font-bold tracking-widest animate-pulse">
+            SCANNING FOLDER...
+          </p>
+        </div>
+      )}
       {/* Refined Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-[20%] left-[10%] w-[70%] h-[50%] bg-indigo-900/10 rounded-full blur-[130px]" />
@@ -966,17 +1031,47 @@ function App() {
                       ) : currentImageSrc ? (
                         <>
                           {/* Blurred Background for Fill */}
-                          <div
-                            className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
-                            style={{
-                              backgroundImage: `url(${currentImageSrc})`,
-                            }}
-                          />
-                          <ZoomableImage
-                            ref={imageRef}
-                            src={currentImageSrc}
-                            alt=""
-                          />
+                          {/* Only show blur for images, not videos (since we don't have a poster ready) */}
+                          {!currentImageSrc.startsWith("video|") && (
+                            <div
+                              className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
+                              style={{
+                                backgroundImage: `url(${currentImageSrc})`,
+                              }}
+                            />
+                          )}
+
+                          {currentImageSrc.startsWith("video|") ? (
+                            <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
+                              <video
+                                src={currentImageSrc.substring(6)}
+                                type={
+                                  images[currentIndex].endsWith(".mp4")
+                                    ? "video/mp4"
+                                    : images[currentIndex].endsWith(".webm")
+                                      ? "video/webm"
+                                      : images[currentIndex].endsWith(".mov")
+                                        ? "video/mp4"
+                                        : undefined
+                                }
+                                controls
+                                autoPlay
+                                muted
+                                playsInline
+                                preload="auto"
+                                className="max-w-full max-h-full rounded-lg shadow-2xl"
+                                onError={(e) =>
+                                  console.error("Video Error:", e)
+                                }
+                              />
+                            </div>
+                          ) : (
+                            <ZoomableImage
+                              ref={imageRef}
+                              src={currentImageSrc}
+                              alt=""
+                            />
+                          )}
                         </>
                       ) : (
                         <div className="text-gray-600 flex flex-col items-center">
@@ -1027,16 +1122,53 @@ function App() {
                 </div>
               )}
 
-              {carouselImages.map((filename, idx) => {
+              {carouselImages.map((image, idx) => {
+                if (!image || typeof image !== "string") return null;
                 const actualIdx = carouselStartIndex + idx;
+                const isCurrent = actualIdx === currentIndex;
+                const ext = image.split(".").pop().toLowerCase();
+                const isVideoFile = [
+                  "mp4",
+                  "mov",
+                  "avi",
+                  "mkv",
+                  "webm",
+                ].includes(ext);
+
                 return (
-                  <Thumbnail
-                    key={filename}
-                    filename={filename}
-                    sourcePath={sourcePath}
-                    isActive={actualIdx === currentIndex}
-                    onClick={() => setCurrentIndex(actualIdx)}
-                  />
+                  <button
+                    key={image || idx}
+                    ref={(el) => (thumbnailRefs.current[actualIdx] = el)}
+                    onClick={() => {
+                      setCurrentIndex(actualIdx);
+                    }}
+                    className={clsx(
+                      "relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden transition-all duration-300 transform group",
+                      isCurrent
+                        ? "ring-2 ring-indigo-500 scale-110 z-10 shadow-lg shadow-indigo-500/50"
+                        : "opacity-60 hover:opacity-100 hover:scale-105 hover:ring-1 hover:ring-white/20",
+                    )}
+                  >
+                    <Thumbnail
+                      filename={image}
+                      sourcePath={sourcePath}
+                      current={isCurrent}
+                    />
+
+                    {isVideoFile && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+                        <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center border border-white/20 shadow-md">
+                          <Play
+                            size={14}
+                            className="fill-white text-white ml-0.5"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gradient Overlay for Text */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                  </button>
                 );
               })}
               {carouselEndIndex < images.length && (
@@ -1105,4 +1237,11 @@ function App() {
   );
 }
 
-export default App;
+// Wrap Export
+const AppWithBoundary = () => (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
+
+export default AppWithBoundary;

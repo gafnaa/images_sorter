@@ -419,8 +419,9 @@ const FilterPopup = ({ filters, onToggle, onClose }) => {
 
 // --- THUMBNAIL COMPONENT ---
 
-const Thumbnail = ({ filename, sourcePath, isActive, onClick }) => {
+const Thumbnail = ({ filename, sourcePath, current, onClick }) => {
   const [src, setSrc] = useState(null);
+  const isActive = current; // Fix prop name mismatch
 
   useEffect(() => {
     let mounted = true;
@@ -498,9 +499,52 @@ const AlertPopup = ({ isOpen, onClose, onConfirm, title, description }) => {
   );
 };
 
-// --- MAIN APP ---
+// --- Error Boundary ---
+
+import { Component } from "react";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ error, errorInfo });
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen w-screen bg-black text-red-500 p-10 overflow-auto whitespace-pre-wrap font-mono relative z-50">
+          <h1 className="text-2xl font-bold mb-4">Something went wrong.</h1>
+          <p className="mb-4">{this.state.error?.toString()}</p>
+          <div className="bg-gray-900 p-4 rounded text-sm text-gray-400">
+            {this.state.errorInfo?.componentStack}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Reload App
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// ... (App component)
 
 function App() {
+  // ... (State and hooks)
   const [sourcePath, setSourcePath] = useState(null);
   const [images, setImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -508,9 +552,6 @@ function App() {
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingImage, setLoadingImage] = useState(false);
-
-  // Filter States
-  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([
     "png",
     "jpg",
@@ -525,19 +566,29 @@ function App() {
     "dng",
     "orf",
     "rw2",
+    "mp4",
+    "mov",
+    "avi",
+    "mkv",
+    "webm",
   ]);
-
-  // Delete Alert State
+  const [showFilters, setShowFilters] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-
-  // Undo History
   const [history, setHistory] = useState([]);
-
-  // Metadata State
   const [metadata, setMetadata] = useState(null);
   const [showMetadata, setShowMetadata] = useState(false);
 
   const imageRef = useRef(null);
+  const thumbnailRefs = useRef([]); // Ensure initialized
+
+  // ... (Logic methods)
+  // ...
+
+  // ... (Effects)
+
+  // ... (Key handlers)
+
+  // --- Render ---
 
   // --- Logic ---
 
@@ -778,6 +829,15 @@ function App() {
 
   return (
     <div className="h-screen w-screen bg-[#050505] text-white flex flex-col overflow-hidden relative font-sans selection:bg-indigo-500/30">
+      {/* Global Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-indigo-400 font-bold tracking-widest animate-pulse">
+            SCANNING FOLDER...
+          </p>
+        </div>
+      )}
       {/* Refined Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-[20%] left-[10%] w-[70%] h-[50%] bg-indigo-900/10 rounded-full blur-[130px]" />
@@ -980,11 +1040,13 @@ function App() {
                           {currentImageSrc.startsWith("video|") ? (
                             <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
                               <video
-                                src={`file:///${currentImageSrc.substring(6).replace(/\\/g, "/")}`}
+                                src={`file:///${currentImageSrc.substring(6).replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/")}`}
                                 controls
                                 autoPlay
-                                loop
                                 className="max-w-full max-h-full rounded-lg shadow-2xl"
+                                onError={(e) =>
+                                  console.error("Video Error:", e)
+                                }
                               />
                             </div>
                           ) : (
@@ -1044,16 +1106,53 @@ function App() {
                 </div>
               )}
 
-              {carouselImages.map((filename, idx) => {
+              {carouselImages.map((image, idx) => {
+                if (!image || typeof image !== "string") return null;
                 const actualIdx = carouselStartIndex + idx;
+                const isCurrent = actualIdx === currentIndex;
+                const ext = image.split(".").pop().toLowerCase();
+                const isVideoFile = [
+                  "mp4",
+                  "mov",
+                  "avi",
+                  "mkv",
+                  "webm",
+                ].includes(ext);
+
                 return (
-                  <Thumbnail
-                    key={filename}
-                    filename={filename}
-                    sourcePath={sourcePath}
-                    isActive={actualIdx === currentIndex}
-                    onClick={() => setCurrentIndex(actualIdx)}
-                  />
+                  <button
+                    key={image || idx}
+                    ref={(el) => (thumbnailRefs.current[actualIdx] = el)}
+                    onClick={() => {
+                      setCurrentIndex(actualIdx);
+                    }}
+                    className={clsx(
+                      "relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden transition-all duration-300 transform group",
+                      isCurrent
+                        ? "ring-2 ring-indigo-500 scale-110 z-10 shadow-lg shadow-indigo-500/50"
+                        : "opacity-60 hover:opacity-100 hover:scale-105 hover:ring-1 hover:ring-white/20",
+                    )}
+                  >
+                    <Thumbnail
+                      filename={image}
+                      sourcePath={sourcePath}
+                      current={isCurrent}
+                    />
+
+                    {isVideoFile && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
+                        <div className="w-8 h-8 rounded-full bg-black/50 flex items-center justify-center border border-white/20 shadow-md">
+                          <Play
+                            size={14}
+                            className="fill-white text-white ml-0.5"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gradient Overlay for Text */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                  </button>
                 );
               })}
               {carouselEndIndex < images.length && (
@@ -1122,4 +1221,11 @@ function App() {
   );
 }
 
-export default App;
+// Wrap Export
+const AppWithBoundary = () => (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
+
+export default AppWithBoundary;

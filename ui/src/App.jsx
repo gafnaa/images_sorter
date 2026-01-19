@@ -253,6 +253,95 @@ const callApi = async (method, ...args) => {
   }
 };
 
+// --- SETTINGS POPUP ---
+
+const SettingsPopup = ({ isOpen, onClose, shortcuts, onSave }) => {
+  const [localShortcuts, setLocalShortcuts] = useState(shortcuts);
+  const [listening, setListening] = useState(null); // 'next', 'prev', 'delete'
+
+  useEffect(() => {
+    if (isOpen) setLocalShortcuts(shortcuts);
+  }, [isOpen, shortcuts]);
+
+  useEffect(() => {
+    const handlerecord = (e) => {
+      if (!listening) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Forbid simple modifier keys alone
+      if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+
+      const key = e.key;
+      // Maybe handle modifiers? e.g. "Ctrl+Z". For now simple keys as requested "Arrow keys".
+
+      setLocalShortcuts((prev) => ({ ...prev, [listening]: key }));
+      setListening(null);
+    };
+
+    if (listening) {
+      window.addEventListener("keydown", handlerecord);
+    }
+    return () => window.removeEventListener("keydown", handlerecord);
+  }, [listening]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+      <div className="bg-[#1e293b] border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Settings className="text-blue-400" size={20} /> Keyboard Shortcuts
+          </h2>
+          <button onClick={onClose} className="hover:bg-white/10 p-1 rounded">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {[
+            { id: "prev", label: "Previous Image" },
+            { id: "next", label: "Next Image" },
+            { id: "delete", label: "Delete Image" },
+          ].map((action) => (
+            <div
+              key={action.id}
+              className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5"
+            >
+              <span className="text-gray-300 font-medium">{action.label}</span>
+              <button
+                onClick={() => setListening(action.id)}
+                className={clsx(
+                  "px-4 py-2 rounded-lg font-mono text-sm border transition-all min-w-[100px] text-center",
+                  listening === action.id
+                    ? "bg-blue-600 border-blue-400 text-white animate-pulse"
+                    : "bg-black/30 border-white/10 text-gray-400 hover:text-white hover:border-white/30",
+                )}
+              >
+                {listening === action.id
+                  ? "Press Key..."
+                  : localShortcuts[action.id]}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2 text-xs text-gray-500 text-center">
+          Click a button and press any key to rebind.
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => onSave(localShortcuts)}>Save Changes</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- COMPONENTS ---
 
 // ... (Button, IconButton, DestinationCard components remain unchanged) ...
@@ -570,6 +659,26 @@ function App() {
   const [metadata, setMetadata] = useState(null);
   const [showMetadata, setShowMetadata] = useState(false);
 
+  // Shortcuts State
+  const DEFAULT_SHORTCUTS = {
+    prev: "ArrowLeft",
+    next: "ArrowRight",
+    delete: "Delete",
+  };
+  const [shortcuts, setShortcuts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("mediasort_shortcuts");
+      return saved ? JSON.parse(saved) : DEFAULT_SHORTCUTS;
+    } catch {
+      return DEFAULT_SHORTCUTS;
+    }
+  });
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("mediasort_shortcuts", JSON.stringify(shortcuts));
+  }, [shortcuts]);
+
   const imageRef = useRef(null);
   const thumbnailRefs = useRef([]); // Ensure initialized
 
@@ -765,6 +874,9 @@ function App() {
 
   useEffect(() => {
     const handleKey = (e) => {
+      // Ignore if typing in an input (if we had any) or if settings open
+      if (showSettings) return;
+
       if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         handleUndo();
@@ -774,9 +886,9 @@ function App() {
       // Ignore if no images
       if (!images.length) return;
 
-      if (e.key === "ArrowRight") handleNext();
-      if (e.key === "ArrowLeft") handlePrev();
-      if (e.key === "Delete") handleDeleteClick(); // Updated handler
+      if (e.key === shortcuts.next) handleNext();
+      if (e.key === shortcuts.prev) handlePrev();
+      if (e.key === shortcuts.delete) handleDeleteClick();
 
       const num = parseInt(e.key);
       if (!isNaN(num) && num > 0 && num <= destinations.length) {
@@ -785,7 +897,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [destinations, currentIndex, images, history]);
+  }, [destinations, currentIndex, images, history, shortcuts, showSettings]);
 
   // --- Render ---
 
@@ -923,6 +1035,15 @@ function App() {
               title="Toggle Info"
             >
               <Info size={18} />
+            </Button>
+
+            <Button
+              onClick={() => setShowSettings(true)}
+              variant="ghost"
+              className="!p-2 w-9 h-9 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+              title="Keyboard Shortcuts"
+            >
+              <Settings size={18} />
             </Button>
 
             <div className="relative">
@@ -1232,6 +1353,16 @@ function App() {
         onConfirm={confirmDelete}
         title="Delete Image?"
         description={`Are you sure you want to permanently delete "${images[currentIndex] || "this image"}"? This action cannot be undone.`}
+      />
+
+      <SettingsPopup
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        shortcuts={shortcuts}
+        onSave={(newShortcuts) => {
+          setShortcuts(newShortcuts);
+          setShowSettings(false);
+        }}
       />
     </div>
   );

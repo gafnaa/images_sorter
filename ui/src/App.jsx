@@ -34,6 +34,7 @@ import {
   Play,
 } from "lucide-react";
 import clsx from "clsx";
+
 // ...
 
 // ... (Other components)
@@ -260,7 +261,10 @@ const SettingsPopup = ({ isOpen, onClose, shortcuts, onSave }) => {
   const [listening, setListening] = useState(null); // 'next', 'prev', 'delete'
 
   useEffect(() => {
-    if (isOpen) setLocalShortcuts(shortcuts);
+    if (isOpen) {
+      setLocalShortcuts(shortcuts);
+      setListening(null); // Reset listening state when opening
+    }
   }, [isOpen, shortcuts]);
 
   useEffect(() => {

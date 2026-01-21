@@ -312,7 +312,7 @@ const SettingsPopup = ({ isOpen, onClose, shortcuts, onSave }) => {
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1">
           {[
             { id: "prev", label: "Previous Media", icon: ArrowLeft },
             { id: "next", label: "Next Media", icon: ArrowRight },
@@ -320,9 +320,9 @@ const SettingsPopup = ({ isOpen, onClose, shortcuts, onSave }) => {
           ].map((action) => (
             <div
               key={action.id}
-              className="group flex items-center justify-between p-3 rounded-lg hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/5"
+              className="group flex items-center justify-between p-2 rounded-lg hover:bg-white/[0.03] transition-colors border border-transparent hover:border-white/5"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div
                   className={clsx(
                     "p-2 rounded-md bg-zinc-900 border border-white/5 transition-colors",

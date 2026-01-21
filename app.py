@@ -15,17 +15,48 @@ server = Flask(__name__)
 CORS(server)
 PORT = 23456
 
-@server.route('/video')
 @server.route('/view')
 def serve_file():
     path = request.args.get('path')
-    if not path:
-        return "No path provided", 400
-    try:
-        # Basic security check? 
+    if not path or not os.path.exists(path):
+        return "File not found", 404
+        
+    ext = os.path.splitext(path)[1].lower()
+    # Web-safe formats that browser can render directly
+    web_safe = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.mp4', '.mov', '.webm', '.ogg'}
+    
+    if ext in web_safe:
         return send_file(path)
-    except Exception as e:
-        return str(e), 500
+    else:
+        # For RAW files or others (CR2, ARW, TIFF), convert to JPEG preview
+        try:
+            from PIL import Image, ImageOps
+            import io
+            
+            # Use cached converter logic if possible, or just do it here
+            with Image.open(path) as img:
+                img = ImageOps.exif_transpose(img)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                else: 
+                     img = img.convert('RGB')
+                
+                # Resize for performance (max FHD)
+                img.thumbnail((1920, 1080))
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=85)
+                buffer.seek(0)
+                return send_file(buffer, mimetype='image/jpeg')
+        except Exception as e:
+            print(f"Error converting view for {path}: {e}")
+            return str(e), 500
+
+@server.route('/video')
+def serve_video():
+    path = request.args.get('path')
+    if not path: return "No path", 400
+    return send_file(path)
 
 @lru_cache(maxsize=1000)
 def get_thumbnail_bytes(path):
@@ -308,12 +339,12 @@ class Api:
                             exif = img._getexif()
                             for tag, value in exif.items():
                                 decoded = ExifTags.TAGS.get(tag, tag)
-                                if decoded in ['DateTimeOriginal', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
+                                if decoded in ['DateTimeOrigin', 'DateTimeOriginal', 'DateTime', 'DateTimeDigitized', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
                                     exif_data[decoded] = str(value)
                 except Exception as read_err:
                     print(f"Error reading metadata from image: {read_err}")
-                print(f"Error reading metadata from image: {read_err}") 
-                # Proceed with basic file stats
+                
+            # Proceed with basic file stats
 
             # Format specific values
             iso = exif_data.get('ISOSpeedRatings', '')
@@ -324,12 +355,22 @@ class Api:
                     aperture = f"f/{exif_data['FNumber']}"
                 except: pass
 
+            # Date Logic with fallbacks
+            date_str = exif_data.get('DateTimeOriginal') or exif_data.get('DateTime') or exif_data.get('DateTimeDigitized')
+            if not date_str or date_str == 'Unknown':
+                # Fallback to file modification time
+                try:
+                    mtime = os.path.getmtime(path)
+                    date_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    date_str = "Unknown"
+
             return {
                 "filename": filename,
                 "resolution": f"{width} x {height}",
                 "size": f"{size_mb:.2f} MB",
                 "format": img_format,
-                "date": exif_data.get('DateTimeOriginal', 'Unknown'),
+                "date": date_str,
                 "camera": f"{exif_data.get('Make', '')} {exif_data.get('Model', '')}".strip() or "Unknown",
                 "iso": iso,
                 "aperture": aperture,

@@ -1243,11 +1243,11 @@ function App() {
                 {/* Image Info Overlay */}
                 {/* Image Info Overlay */}
                 {!isDone && (
-                  <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20">
-                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300">
+                  <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20 pointer-events-none">
+                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-sm font-mono text-gray-300 pointer-events-auto">
                       {images[currentIndex]}
                     </div>
-                    <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400 flex items-center">
+                    <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs font-bold text-gray-400 flex items-center pointer-events-auto">
                       {currentIndex + 1} / {images.length}
                     </div>
                   </div>

@@ -15,17 +15,48 @@ server = Flask(__name__)
 CORS(server)
 PORT = 23456
 
-@server.route('/video')
 @server.route('/view')
 def serve_file():
     path = request.args.get('path')
-    if not path:
-        return "No path provided", 400
-    try:
-        # Basic security check? 
+    if not path or not os.path.exists(path):
+        return "File not found", 404
+        
+    ext = os.path.splitext(path)[1].lower()
+    # Web-safe formats that browser can render directly
+    web_safe = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.mp4', '.mov', '.webm', '.ogg'}
+    
+    if ext in web_safe:
         return send_file(path)
-    except Exception as e:
-        return str(e), 500
+    else:
+        # For RAW files or others (CR2, ARW, TIFF), convert to JPEG preview
+        try:
+            from PIL import Image, ImageOps
+            import io
+            
+            # Use cached converter logic if possible, or just do it here
+            with Image.open(path) as img:
+                img = ImageOps.exif_transpose(img)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                else: 
+                     img = img.convert('RGB')
+                
+                # Resize for performance (max FHD)
+                img.thumbnail((1920, 1080))
+                
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=85)
+                buffer.seek(0)
+                return send_file(buffer, mimetype='image/jpeg')
+        except Exception as e:
+            print(f"Error converting view for {path}: {e}")
+            return str(e), 500
+
+@server.route('/video')
+def serve_video():
+    path = request.args.get('path')
+    if not path: return "No path", 400
+    return send_file(path)
 
 @lru_cache(maxsize=1000)
 def get_thumbnail_bytes(path):

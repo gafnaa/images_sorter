@@ -1149,96 +1149,81 @@ function App() {
             <div className="relative w-full h-full max-w-5xl max-h-full flex flex-col">
               {/* Image Container */}
               <div className="flex-1 relative rounded-3xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-[0_0_60px_-15px_rgba(79,70,229,0.1)] flex items-center justify-center group ring-1 ring-white/5">
-                <AnimatePresence mode="wait">
-                  {isDone ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-center"
-                    >
-                      <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle size={48} className="text-emerald-500" />
+                {/* Content */}
+                {isDone ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center"
+                  >
+                    <div className="w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle size={48} className="text-emerald-500" />
+                    </div>
+                    <h2 className="text-3xl font-bold mb-2">All Caught Up!</h2>
+                    <p className="text-gray-400 mb-8">This folder is empty.</p>
+                    <Button onClick={handleSelectSource} variant="secondary">
+                      <RefreshCw size={18} /> Select New Folder
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center p-1">
+                    {loadingImage ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-gray-500 uppercase tracking-widest">
+                          Loading
+                        </span>
                       </div>
-                      <h2 className="text-3xl font-bold mb-2">
-                        All Caught Up!
-                      </h2>
-                      <p className="text-gray-400 mb-8">
-                        This folder is empty.
-                      </p>
-                      <Button onClick={handleSelectSource} variant="secondary">
-                        <RefreshCw size={18} /> Select New Folder
-                      </Button>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key={images[currentIndex]}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="absolute inset-0 flex items-center justify-center p-1"
-                    >
-                      {loadingImage ? (
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-xs text-gray-500 uppercase tracking-widest">
-                            Loading
-                          </span>
-                        </div>
-                      ) : currentImageSrc ? (
-                        <>
-                          {/* Blurred Background for Fill */}
-                          {/* Only show blur for images, not videos (since we don't have a poster ready) */}
-                          {!currentImageSrc.startsWith("video|") && (
-                            <div
-                              className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
-                              style={{
-                                backgroundImage: `url(${currentImageSrc})`,
-                              }}
-                            />
-                          )}
+                    ) : currentImageSrc ? (
+                      <>
+                        {/* Blurred Background for Fill */}
+                        {!currentImageSrc.startsWith("video|") && (
+                          <div
+                            className="absolute inset-0 bg-cover bg-center opacity-30 blur-3xl scale-125 saturate-150 transition-all duration-500"
+                            style={{
+                              backgroundImage: `url(${currentImageSrc})`,
+                            }}
+                          />
+                        )}
 
-                          {currentImageSrc.startsWith("video|") ? (
-                            <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
-                              <video
-                                src={currentImageSrc.substring(6)}
-                                type={
-                                  images[currentIndex].endsWith(".mp4")
-                                    ? "video/mp4"
-                                    : images[currentIndex].endsWith(".webm")
-                                      ? "video/webm"
-                                      : images[currentIndex].endsWith(".mov")
-                                        ? "video/mp4"
-                                        : undefined
-                                }
-                                controls
-                                autoPlay
-                                muted
-                                playsInline
-                                preload="auto"
-                                className="max-w-full max-h-full rounded-lg shadow-2xl"
-                                onError={(e) =>
-                                  console.error("Video Error:", e)
-                                }
-                              />
-                            </div>
-                          ) : (
-                            <ZoomableImage
-                              ref={imageRef}
-                              src={currentImageSrc}
-                              alt=""
+                        {currentImageSrc.startsWith("video|") ? (
+                          <div className="w-full h-full flex items-center justify-center bg-black/80 relative z-10">
+                            <video
+                              src={currentImageSrc.substring(6)}
+                              type={
+                                images[currentIndex].endsWith(".mp4")
+                                  ? "video/mp4"
+                                  : images[currentIndex].endsWith(".webm")
+                                    ? "video/webm"
+                                    : images[currentIndex].endsWith(".mov")
+                                      ? "video/mp4"
+                                      : undefined
+                              }
+                              controls
+                              autoPlay
+                              muted
+                              playsInline
+                              preload="auto"
+                              className="max-w-full max-h-full rounded-lg shadow-2xl"
+                              onError={(e) => console.error("Video Error:", e)}
                             />
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-gray-600 flex flex-col items-center">
-                          <ImageIcon size={48} className="mb-2 opacity-20" />
-                          <p>No Preview Available</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                          </div>
+                        ) : (
+                          <ZoomableImage
+                            ref={imageRef}
+                            src={currentImageSrc}
+                            alt=""
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-gray-600 flex flex-col items-center">
+                        <ImageIcon size={48} className="mb-2 opacity-20" />
+                        <p>No Preview Available</p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Image Info Overlay */}
                 {/* Image Info Overlay */}

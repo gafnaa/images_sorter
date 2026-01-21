@@ -312,8 +312,8 @@ class Api:
                                     exif_data[decoded] = str(value)
                 except Exception as read_err:
                     print(f"Error reading metadata from image: {read_err}")
-                print(f"Error reading metadata from image: {read_err}") 
-                # Proceed with basic file stats
+                
+            # Proceed with basic file stats
 
             # Format specific values
             iso = exif_data.get('ISOSpeedRatings', '')

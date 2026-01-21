@@ -308,7 +308,7 @@ class Api:
                             exif = img._getexif()
                             for tag, value in exif.items():
                                 decoded = ExifTags.TAGS.get(tag, tag)
-                                if decoded in ['DateTimeOriginal', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
+                                if decoded in ['DateTimeOrigin', 'DateTimeOriginal', 'DateTime', 'DateTimeDigitized', 'Make', 'Model', 'ISOSpeedRatings', 'ExposureTime', 'FNumber']:
                                     exif_data[decoded] = str(value)
                 except Exception as read_err:
                     print(f"Error reading metadata from image: {read_err}")
@@ -324,12 +324,22 @@ class Api:
                     aperture = f"f/{exif_data['FNumber']}"
                 except: pass
 
+            # Date Logic with fallbacks
+            date_str = exif_data.get('DateTimeOriginal') or exif_data.get('DateTime') or exif_data.get('DateTimeDigitized')
+            if not date_str or date_str == 'Unknown':
+                # Fallback to file modification time
+                try:
+                    mtime = os.path.getmtime(path)
+                    date_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    date_str = "Unknown"
+
             return {
                 "filename": filename,
                 "resolution": f"{width} x {height}",
                 "size": f"{size_mb:.2f} MB",
                 "format": img_format,
-                "date": exif_data.get('DateTimeOriginal', 'Unknown'),
+                "date": date_str,
                 "camera": f"{exif_data.get('Make', '')} {exif_data.get('Model', '')}".strip() or "Unknown",
                 "iso": iso,
                 "aperture": aperture,

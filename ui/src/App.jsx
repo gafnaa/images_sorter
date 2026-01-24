@@ -1110,14 +1110,15 @@ function App() {
               <AnimatePresence>
                 {showSort && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full right-0 mt-2 w-48 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1"
+                    initial={{ opacity: 0, scale: 0.95, y: 0 }}
+                    animate={{ opacity: 1, scale: 1, y: 4 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 0 }}
+                    transition={{ duration: 0.1 }}
+                    className="absolute top-full right-0 w-56 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-0.5 ring-1 ring-black/5"
                   >
-                    <span className="text-xs font-bold text-gray-500 px-3 py-1 uppercase tracking-wider">
-                      Sort By
-                    </span>
+                    <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 ml-1">
+                      Sort Order
+                    </div>
                     {[
                       { label: "Name (A-Z)", by: "name", order: "asc" },
                       { label: "Name (Z-A)", by: "name", order: "desc" },
@@ -1125,28 +1126,37 @@ function App() {
                       { label: "Date (Oldest)", by: "date", order: "asc" },
                       { label: "Size (Largest)", by: "size", order: "desc" },
                       { label: "Size (Smallest)", by: "size", order: "asc" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.label}
-                        onClick={() => {
-                          setSortConfig({ by: opt.by, order: opt.order });
-                          setShowSort(false);
-                        }}
-                        className={clsx(
-                          "text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between items-center group",
-                          sortConfig.by === opt.by &&
-                            sortConfig.order === opt.order
-                            ? "bg-indigo-600 text-white"
-                            : "text-gray-400 hover:bg-white/5 hover:text-white",
-                        )}
-                      >
-                        {opt.label}
-                        {sortConfig.by === opt.by &&
-                          sortConfig.order === opt.order && (
-                            <CheckCircle size={14} />
+                    ].map((opt) => {
+                      const isActive =
+                        sortConfig.by === opt.by &&
+                        sortConfig.order === opt.order;
+                      return (
+                        <button
+                          key={opt.label}
+                          onClick={() => {
+                            setSortConfig({ by: opt.by, order: opt.order });
+                            setShowSort(false);
+                          }}
+                          className={clsx(
+                            "text-left px-3 py-2 rounded-lg text-sm transition-all flex justify-between items-center group relative",
+                            isActive
+                              ? "bg-indigo-500/10 text-indigo-400 font-medium"
+                              : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200",
                           )}
-                      </button>
-                    ))}
+                        >
+                          <span className="z-10">{opt.label}</span>
+                          {isActive && (
+                            <motion.div
+                              layoutId="sortActive"
+                              className="absolute inset-0 rounded-lg bg-indigo-500/5 border border-indigo-500/10"
+                            />
+                          )}
+                          {isActive && (
+                            <CheckCircle size={14} className="z-10" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </motion.div>
                 )}
               </AnimatePresence>

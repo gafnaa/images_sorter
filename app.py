@@ -162,12 +162,15 @@ class Api:
             print(f"API: Error opening dialog: {e}")
             return None
 
-    def scan_images(self, folder_path, allowed_extensions=None):
-        """Return a list of image and video filenames in the folder."""
+    def scan_images(self, folder_path, allowed_extensions=None, sort_by="name", order="asc"):
+        """
+        Return a list of image and video filenames in the folder.
+        sort_by: name, date, size
+        order: asc, desc
+        """
         if not folder_path or not os.path.exists(folder_path):
             return []
         
-        images = []
         # Default extensions if none provided
         if not allowed_extensions:
             # Added video extensions
@@ -181,19 +184,36 @@ class Api:
             valid_exts = {f".{ext.lower().lstrip('.')}" for ext in allowed_extensions}
             
         try:
-            # Use scandir for better performance
+            # Collect file entries first to allow sorting
+            entries_list = []
             with os.scandir(folder_path) as entries:
                 for entry in entries:
                     if entry.is_file():
                         ext = os.path.splitext(entry.name)[1].lower()
                         if ext in valid_exts:
-                            images.append(entry.name)
+                            entries_list.append(entry)
+            
+            # Sort Logic
+            reverse = (order == "desc")
+            if sort_by == "date":
+                # Mtime
+                entries_list.sort(key=lambda e: e.stat().st_mtime, reverse=reverse)
+            elif sort_by == "size":
+                # Size
+                entries_list.sort(key=lambda e: e.stat().st_size, reverse=reverse)
+            else:
+                # Name (Natural Sort)
+                import re
+                def natural_keys(text):
+                    return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
+                entries_list.sort(key=lambda e: natural_keys(e.name), reverse=reverse)
+            
+            # Return filenames only
+            return [e.name for e in entries_list]
+
         except Exception as e:
             print(f"Error scanning folder: {e}")
-        
-        # Sort explicitly since scandir is not ordered
-        images.sort()
-        return images
+            return []
 
     def load_image(self, path, is_thumbnail=False):
         """

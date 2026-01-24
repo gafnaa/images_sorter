@@ -32,6 +32,7 @@ import {
   RotateCcw,
   Video,
   Play,
+  ArrowUpDown,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -710,6 +711,8 @@ function App() {
     }
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ by: "name", order: "asc" }); // 'name', 'date', 'size'
+  const [showSort, setShowSort] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("mediasort_shortcuts", JSON.stringify(shortcuts));
@@ -740,7 +743,14 @@ function App() {
   const scan = async () => {
     if (!sourcePath) return;
     setLoading(true);
-    const imgs = await callApi("scan_images", sourcePath, filters);
+    // Pass sort config to backend
+    const imgs = await callApi(
+      "scan_images",
+      sourcePath,
+      filters,
+      sortConfig.by,
+      sortConfig.order,
+    );
     setImages(imgs || []);
     // Reset index if out of bounds or just 0
     setCurrentIndex(0);
@@ -752,7 +762,7 @@ function App() {
     if (sourcePath) {
       scan();
     }
-  }, [filters, sourcePath]);
+  }, [filters, sourcePath, sortConfig]);
 
   useEffect(() => {
     loadRef.current = currentIndex; // Update ref
@@ -1081,6 +1091,66 @@ function App() {
             >
               <Settings size={18} />
             </Button>
+
+            {/* Sort Button */}
+            <div className="relative">
+              <Button
+                onClick={() => setShowSort(!showSort)}
+                variant="ghost"
+                className={clsx(
+                  "!p-2 w-9 h-9 rounded-lg transition-all",
+                  showSort
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-gray-400 hover:text-white hover:bg-white/5",
+                )}
+                title="Sort Files"
+              >
+                <ArrowUpDown size={18} />
+              </Button>
+              <AnimatePresence>
+                {showSort && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full right-0 mt-2 w-48 bg-[#1e293b] border border-white/10 rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1"
+                  >
+                    <span className="text-xs font-bold text-gray-500 px-3 py-1 uppercase tracking-wider">
+                      Sort By
+                    </span>
+                    {[
+                      { label: "Name (A-Z)", by: "name", order: "asc" },
+                      { label: "Name (Z-A)", by: "name", order: "desc" },
+                      { label: "Date (Newest)", by: "date", order: "desc" },
+                      { label: "Date (Oldest)", by: "date", order: "asc" },
+                      { label: "Size (Largest)", by: "size", order: "desc" },
+                      { label: "Size (Smallest)", by: "size", order: "asc" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.label}
+                        onClick={() => {
+                          setSortConfig({ by: opt.by, order: opt.order });
+                          setShowSort(false);
+                        }}
+                        className={clsx(
+                          "text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between items-center group",
+                          sortConfig.by === opt.by &&
+                            sortConfig.order === opt.order
+                            ? "bg-indigo-600 text-white"
+                            : "text-gray-400 hover:bg-white/5 hover:text-white",
+                        )}
+                      >
+                        {opt.label}
+                        {sortConfig.by === opt.by &&
+                          sortConfig.order === opt.order && (
+                            <CheckCircle size={14} />
+                          )}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <div className="relative">
               <Button
